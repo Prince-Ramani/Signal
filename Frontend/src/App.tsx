@@ -9,13 +9,22 @@ import Loading from "./components/Loading";
 import Signup from "./Pages/Signup";
 import Home from "./Pages/Home/Home";
 import Signin from "./Pages/Signin";
+import { useAuthUser } from "./Context/authUserContext";
+import { useWebsocket } from "./Context/Websocket";
 
 const App = () => {
+  const { setAuthUser } = useAuthUser();
+  const { setIsSignedIn } = useWebsocket();
   const { data, isPending } = useQuery({
     queryKey: ["authUser"],
     queryFn: async () => {
       const res = await fetch(`/api/me`);
       const data = await res.json();
+      if ("error" in data) return;
+
+      setAuthUser(data);
+      setIsSignedIn(true);
+
       return data;
     },
     retry: false,

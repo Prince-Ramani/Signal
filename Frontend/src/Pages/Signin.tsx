@@ -93,7 +93,7 @@ const Signin = memo(() => {
                 disabled={isPending}
                 onClick={handleSubmit}
               >
-                Sign in
+                {isPending ? "Signing in..." : "Sign in"}{" "}
               </button>
               <div
                 className="md:text-lg self-start font-medium md:hover:text-gray-200 cursor-pointer md:hover:underline"

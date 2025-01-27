@@ -130,7 +130,7 @@ const Signup = memo(() => {
                 disabled={isPending}
                 onClick={handleSubmit}
               >
-                Sign up
+                {isPending ? "Signing up..." : "Sign up"}
               </button>
               <div
                 className="md:text-lg self-start font-medium md:hover:text-gray-200 cursor-pointer md:hover:underline"

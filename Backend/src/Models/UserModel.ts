@@ -23,6 +23,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  blocked: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "User",
+    default: [],
+  },
+  blockedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "User",
+    default: [],
+  },
 });
 
 const User = mongoose.model("User", userSchema);
