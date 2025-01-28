@@ -1,9 +1,11 @@
-import { personalMessage } from "@/lib/Types";
+import { personalMessageFunc } from "@/lib/Types";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useAuthUser } from "./authUserContext";
+import { toast } from "react-toastify";
 
 interface socketTypes {
   socket: WebSocket | null;
-  sendPersonalMessage: (message: personalMessage) => void;
+  sendPersonalMessage: (message: personalMessageFunc) => void;
   isSignedIn: boolean;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -13,9 +15,9 @@ const WebSocketContext = createContext<socketTypes | undefined>(undefined);
 const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
+  const { authUser } = useAuthUser();
 
   useEffect(() => {
-    console.log(isSignedIn);
     if (isSignedIn && !socket) {
       const newSocket = new WebSocket("ws://localhost:8000");
       setSocket(newSocket);
@@ -40,9 +42,33 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isSignedIn]);
 
-  const sendPersonalMessage = (message: personalMessage) => {
-    if (socket && socket.readyState === WebSocket.OPEN)
-      socket.send(JSON.stringify(message));
+  const sendPersonalMessage = (messageToSend: personalMessageFunc) => {
+    const { message, to } = messageToSend;
+
+    if (!authUser || !authUser?._id) {
+      toast.error("Unauthorized!");
+      return;
+    }
+
+    if (!to) {
+      toast.error("Recevier id not found!");
+      return;
+    }
+
+    if (!message || message.trim() === "") {
+      toast.error("Message content required");
+      return;
+    }
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(
+        JSON.stringify({
+          event: "sendMessage",
+          ...messageToSend,
+          from: authUser._id,
+        })
+      );
+    }
   };
 
   return (

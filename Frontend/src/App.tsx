@@ -11,6 +11,8 @@ import Home from "./Pages/Home/Home";
 import Signin from "./Pages/Signin";
 import { useAuthUser } from "./Context/authUserContext";
 import { useWebsocket } from "./Context/Websocket";
+import Layout from "./Pages/Layout";
+import FindFriends from "./Pages/FindFriends/FindFriends";
 
 const App = () => {
   const { setAuthUser } = useAuthUser();
@@ -51,10 +53,10 @@ const App = () => {
           path="/signin"
           element={!isSignedIn ? <Signin /> : <Navigate to="/" />}
         />
-        <Route
-          path="/"
-          element={isSignedIn ? <Home /> : <Navigate to="signup" />}
-        />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="/search" element={<FindFriends />} />
+        </Route>
       </Routes>
     </Router>
   );

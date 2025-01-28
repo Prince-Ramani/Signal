@@ -27,19 +27,23 @@ const MessageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Messages",
       required: false,
+      deault: "",
     },
 
     attachedVideo: {
       required: false,
       type: String,
+      default: "",
     },
     attachedDocuments: {
       required: false,
       type: [String],
+      default: [],
     },
     attachedImages: {
       required: false,
       type: [String],
+      default: [],
     },
   },
   {

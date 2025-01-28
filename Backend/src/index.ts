@@ -21,7 +21,14 @@ const app = express();
 
 interface WebSocketMessage {
   event: string;
-  data: any;
+  from: string;
+  to: string;
+  message: string;
+  messageType: "Personal" | "Group";
+  isReply?: string;
+  attachedVideo?: string;
+  attachedDocuments?: string[];
+  attachedImages?: string[];
 }
 
 const PORT = process.env.PORT || 8000;
@@ -68,6 +75,37 @@ wss.on("connection", async (ws, req) => {
       const ev: WebSocketMessage = JSON.parse(data);
 
       if (ev.event === "sendMessage") {
+        const {
+          from,
+          event,
+          message,
+          messageType,
+          to,
+          attachedDocuments,
+          attachedImages,
+          attachedVideo,
+          isReply,
+        } = ev;
+
+        if (!from || !to || !message || !messageType) {
+          ws.send(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
+
+        const newMessage = new Messages({
+          from,
+          to,
+          message,
+          messageType,
+        });
+
+        const savedMessage = await newMessage.save();
+
+        await savedMessage.populate({
+          path: "from",
+          select: "username profilePicture",
+        });
+        ws.send(JSON.stringify(savedMessage));
       }
     } catch (err) {
       console.log(err);

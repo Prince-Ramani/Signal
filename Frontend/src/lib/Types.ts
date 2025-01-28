@@ -9,14 +9,20 @@ export interface userTypes {
 }
 
 export interface personalMessage {
+  event: "sendMessage";
   messageType: "Group" | "Personal";
-  sendTo: string;
+  to: string;
+  from: string;
   message: string;
   isReply?: string;
   attachedImages?: string[];
   attachedVideo?: string;
   attachedDocuments?: string[];
-  createdAt: string;
-  updatedAt: string;
-  _id: string;
+}
+
+export interface personalMessageFunc {
+  messageType: "Group" | "Personal";
+  to: string;
+  isReply?: string;
+  message: string;
 }

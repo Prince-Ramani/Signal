@@ -22,10 +22,10 @@ createRoot(document.getElementById("root")!).render(
       hideProgressBar={true}
       autoClose={1500}
     />
-    <WebSocketProvider>
-      <AuthuserProvider>
+    <AuthuserProvider>
+      <WebSocketProvider>
         <App />
-      </AuthuserProvider>
-    </WebSocketProvider>
+      </WebSocketProvider>
+    </AuthuserProvider>
   </QueryClientProvider>
 );

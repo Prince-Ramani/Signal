@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
   },
   profiePicture: {
     type: String,
-    default: "",
+    default:
+      "https://res.cloudinary.com/dwxzguawt/image/upload/v1735982611/m3rwtrv8z1yfxryyoew5_iwbxdw.png",
   },
   bio: {
     type: String,
@@ -29,6 +30,11 @@ const userSchema = new mongoose.Schema({
     default: [],
   },
   blockedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "User",
+    default: [],
+  },
+  friends: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "User",
     default: [],
