@@ -5,6 +5,7 @@ import Nomessage from "./NoMessage";
 const Home = () => {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const [totalChats, setTotalChats] = useState();
 
   const tabs = [
     {
@@ -44,7 +45,7 @@ const Home = () => {
   return (
     <div className="w-full  h-full flex select-none    ">
       <div className=" w-full xl:w-4/12   flex border-l border-r h-full    ">
-        <div className="  bg-primary-foreground w-full ">
+        <div className="  bg-background w-full ">
           <div>
             <div className="font-bold   lg:text-2xl  p-2 xl:p-4">Chats</div>
           </div>

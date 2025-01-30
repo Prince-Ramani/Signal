@@ -1,5 +1,4 @@
 import { memo, useRef, useState } from "react";
-import Nomessage from "../Home/NoMessage";
 import { ArrowLeft, Search, XIcon } from "lucide-react";
 import FriendsContent from "../Home/FriendsContent";
 

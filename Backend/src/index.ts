@@ -6,30 +6,16 @@ import path from "path";
 import http from "http";
 import ws from "ws";
 
-import * as cookie from "cookie";
-
 import connectMongod from "./connection";
 ("./connection");
 
 import authRoutes from "./Routes/auth";
-import { validateToken } from "./token";
-import Messages from "./Models/MessageModel";
+
+import { setUpWebSocketServer } from "./server";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const app = express();
-
-interface WebSocketMessage {
-  event: string;
-  from: string;
-  to: string;
-  message: string;
-  messageType: "Personal" | "Group";
-  isReply?: string;
-  attachedVideo?: string;
-  attachedDocuments?: string[];
-  attachedImages?: string[];
-}
 
 const PORT = process.env.PORT || 8000;
 
@@ -50,87 +36,7 @@ const server = http.createServer(app);
 
 const wss = new ws.Server({ server });
 
-const usersMap = new Map<string, ws>();
-
-wss.on("connection", async (ws, req) => {
-  var cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : {};
-
-  if (!cookies.user) {
-    ws.close(1008, "Unauthorized");
-    return;
-  }
-
-  const userID = validateToken(cookies.user);
-
-  if (!userID) {
-    ws.close(1008, "Unauthorized");
-    return;
-  }
-
-  usersMap.set(userID, ws);
-
-  ws.on("message", async (message) => {
-    try {
-      const data = typeof message === "string" ? message : message.toString();
-      const ev: WebSocketMessage = JSON.parse(data);
-
-      if (ev.event === "sendMessage") {
-        const {
-          from,
-          event,
-          message,
-          messageType,
-          to,
-          attachedDocuments,
-          attachedImages,
-          attachedVideo,
-          isReply,
-        } = ev;
-
-        if (!from || !to || !message || !messageType) {
-          ws.send(JSON.stringify({ error: "Unauthorized" }));
-          return;
-        }
-
-        const newMessage = new Messages({
-          from,
-          to,
-          message,
-          messageType,
-        });
-
-        const savedMessage = await newMessage.save();
-
-        await savedMessage.populate({
-          path: "from",
-          select: "username profilePicture",
-        });
-        ws.send(JSON.stringify(savedMessage));
-      }
-    } catch (err) {
-      console.log(err);
-      ws.send(
-        JSON.stringify({
-          event: "error",
-          message: "Internal server error: Failed to parse the message.",
-        })
-      );
-    }
-  });
-
-  ws.on("close", (code, reason) => {
-    console.log(
-      "WebSocket connection closed with code : ",
-      code,
-      ", Reason : ",
-      reason
-    );
-  });
-
-  ws.on("error", (err) => {
-    console.error("WebSocket error:", err);
-  });
-});
+setUpWebSocketServer(wss);
 
 app.get("*", (req: Request, res: Response) => {
   console.log(req.url);

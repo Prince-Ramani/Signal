@@ -22,7 +22,7 @@ const App = () => {
     queryFn: async () => {
       const res = await fetch(`/api/me`);
       const data = await res.json();
-      if ("error" in data) return;
+      if ("error" in data) return null;
 
       setAuthUser(data);
       setIsSignedIn(true);
@@ -54,8 +54,14 @@ const App = () => {
           element={!isSignedIn ? <Signin /> : <Navigate to="/" />}
         />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="/search" element={<FindFriends />} />
+          <Route
+            index
+            element={isSignedIn ? <Home /> : <Navigate to="/signup" />}
+          />
+          <Route
+            path="/search"
+            element={isSignedIn ? <FindFriends /> : <Navigate to="/signup" />}
+          />
         </Route>
       </Routes>
     </Router>

@@ -1,4 +1,6 @@
 import bcrypt from "bcryptjs";
+import { v2 as cloudinary } from "cloudinary";
+import { unlink } from "fs";
 
 declare global {
   namespace Express {
@@ -7,6 +9,8 @@ declare global {
     }
   }
 }
+
+const imageFolder = "Signal/Images";
 
 export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -25,4 +29,20 @@ export const verifyPassword = async (
 ): Promise<boolean> => {
   const isVerified = await bcrypt.compare(password, hashedPassword);
   return isVerified;
+};
+
+export const uploadImageToClodinary = async (
+  base64Image: string
+): Promise<string> => {
+  try {
+    const uploadResult = await cloudinary.uploader.upload(base64Image, {
+      resource_type: "image",
+      folder: imageFolder,
+    });
+
+    return uploadResult.secure_url;
+  } catch (err) {
+    console.log("error uplaoding image  : ", err);
+    return "";
+  }
 };

@@ -4,6 +4,7 @@ export interface userTypes {
   profilePicture: string;
   bio: string;
   blocked: string[];
+  pendingFriendRequests: string[];
   blockedBy: string[];
   _id: string;
 }

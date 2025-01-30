@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 interface socketTypes {
   socket: WebSocket | null;
   sendPersonalMessage: (message: personalMessageFunc) => void;
+  sendFriendRequest: (id: string) => void;
   isSignedIn: boolean;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -71,9 +72,21 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const sendFriendRequest = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ reqestId: id, event: "addFriend" }));
+    }
+  };
+
   return (
     <WebSocketContext.Provider
-      value={{ socket, sendPersonalMessage, setIsSignedIn, isSignedIn }}
+      value={{
+        socket,
+        sendPersonalMessage,
+        setIsSignedIn,
+        isSignedIn,
+        sendFriendRequest,
+      }}
     >
       {children}
     </WebSocketContext.Provider>
