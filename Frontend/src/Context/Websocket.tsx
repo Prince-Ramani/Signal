@@ -7,8 +7,10 @@ interface socketTypes {
   socket: WebSocket | null;
   sendPersonalMessage: (message: personalMessageFunc) => void;
   sendFriendRequest: (id: string) => void;
+  searchFriend: (id: string) => void;
   isSignedIn: boolean;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
+  searchResult: any[];
 }
 
 const WebSocketContext = createContext<socketTypes | undefined>(undefined);
@@ -16,6 +18,7 @@ const WebSocketContext = createContext<socketTypes | undefined>(undefined);
 const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
+  const [searchResult, setSearchResult] = useState<any[]>([]);
   const { authUser } = useAuthUser();
 
   useEffect(() => {
@@ -32,6 +35,25 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.onclose = (event) => {
         console.log("WebSocket closed:", event);
+      };
+
+      newSocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.event === "searchFriend" && data.searchResult) {
+          setSearchResult(data.searchResult);
+        }
+
+        if (data.event === "sendRequest") {
+          if (data.error) {
+            toast.error(data.error);
+            return;
+          }
+
+          if (data.message) {
+            toast.success(data.message);
+          }
+        }
       };
 
       return () => newSocket.close();
@@ -74,7 +96,18 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   const sendFriendRequest = (id: string) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ reqestId: id, event: "addFriend" }));
+      socket.send(JSON.stringify({ id, event: "sendRequest" }));
+    }
+  };
+
+  const searchFriend = (username: string) => {
+    if (!username || username.trim() === "") {
+      if (searchResult.length > 0) setSearchResult([]);
+      return;
+    }
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ username, event: "searchFriend" }));
     }
   };
 
@@ -86,6 +119,8 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         setIsSignedIn,
         isSignedIn,
         sendFriendRequest,
+        searchFriend,
+        searchResult,
       }}
     >
       {children}

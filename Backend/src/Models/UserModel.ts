@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   bio: {
     type: String,
-    default: "",
+    default: "Hey there! I'm using Signal. Let's chat!",
   },
   blocked: {
     type: [mongoose.Schema.Types.ObjectId],

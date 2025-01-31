@@ -5,7 +5,6 @@ import Nomessage from "./NoMessage";
 const Home = () => {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const [totalChats, setTotalChats] = useState();
 
   const tabs = [
     {

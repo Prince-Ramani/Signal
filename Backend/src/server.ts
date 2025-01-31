@@ -93,17 +93,42 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
         if (ev && ev.event === "sendRequest") {
           try {
-            const { id }: addFriendInterface = ev;
+            const { id, event }: addFriendInterface = ev;
             if (!id || !mongoose.isValidObjectId(id)) {
-              ws.send(JSON.stringify({ error: "No id found" }));
+              ws.send(JSON.stringify({ error: "No id found!", event }));
               return;
             }
-            const isOnline = usersMap.get(id);
 
-            const user = await User.findById(userID);
+            if (userID === id) {
+              ws.send(
+                JSON.stringify({
+                  message: "You can't send frined request to youeself!",
+                  event,
+                })
+              );
+              return;
+            }
+
+            const user = await User.findById(id);
+
+            console.log(user);
 
             if (!user) {
-              ws.send(JSON.stringify({ error: "No such user found!" }));
+              ws.send(JSON.stringify({ error: "No such user found!", event }));
+              return;
+            }
+
+            const hasAlreadySent = user.pendingFriendRequest.some(
+              (p) => p.toString() === userID
+            );
+
+            if (hasAlreadySent) {
+              ws.send(
+                JSON.stringify({
+                  message: "Friend request already sent!",
+                  event,
+                })
+              );
               return;
             }
 
@@ -111,12 +136,19 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
             await user.save();
 
+            const isOnline = usersMap.get(id);
+
             if (isOnline && isOnline.readyState === WebSocket.OPEN) {
-              isOnline.send("New friend request!");
+              isOnline.send(
+                JSON.stringify({ message: "New friend request!", event })
+              );
             }
 
             ws.send(
-              JSON.stringify({ message: "Friend request sent successfully!" })
+              JSON.stringify({
+                message: "Friend request sent successfully!",
+                event,
+              })
             );
             return;
           } catch (err) {
@@ -148,7 +180,9 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             );
 
             if (!hadSentRequest) {
-              ws.send(JSON.stringify({ error: "No such request found!" }));
+              ws.send(
+                JSON.stringify({ error: "No such friend request found!" })
+              );
               return;
             }
 
@@ -196,6 +230,36 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           } catch (err) {
             console.log("Error accepting request!", err);
           }
+        }
+
+        if (ev && ev.event === "searchFriend") {
+          const { username, event } = ev;
+          if (!username) {
+            return;
+          }
+          const user = await User.findById(userID);
+          if (!user) {
+            ws.send("Your account doesn't exists!");
+            return;
+          }
+
+          const searchResult = await User.find({
+            $and: [
+              {
+                username: { $regex: `^${username}`, $options: "i" },
+                $and: [
+                  { _id: { $nin: user.blocked } },
+                  { blocked: { $nin: userID } },
+                ],
+              },
+            ],
+          })
+            .select(
+              "username profilePicture _id bio friends pendingFriendRequest"
+            )
+            .lean();
+
+          ws.send(JSON.stringify({ searchResult, event: "searchFriend" }));
         }
       } catch (err) {
         console.log(err);
