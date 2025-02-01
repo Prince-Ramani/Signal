@@ -140,7 +140,10 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
             if (isOnline && isOnline.readyState === WebSocket.OPEN) {
               isOnline.send(
-                JSON.stringify({ message: "New friend request!", event })
+                JSON.stringify({
+                  message: ` ${user.username} just sent you a friend request request 🥳!`,
+                  event: "getNotifications",
+                })
               );
             }
 
@@ -161,7 +164,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
         if (ev && ev.event === "acceptRequest") {
           try {
-            const { id }: addFriendInterface = ev;
+            const { id, event }: addFriendInterface = ev;
 
             if (!id || !mongoose.isValidObjectId(id)) {
               ws.send(JSON.stringify({ error: "No id found" }));
@@ -220,15 +223,64 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             ) {
               requesterSocket.send(
                 JSON.stringify({
-                  message: `${user.username} just accepted your friend request!`,
+                  message: `${user.username} just accepted your friend request 🥳. Start chatting💬 now!`,
+                  event: "getNotifications",
                 })
               );
             }
 
-            ws.send(JSON.stringify({ message: "Friend request accepted!" }));
+            ws.send(
+              JSON.stringify({ message: "Friend request accepted!", event })
+            );
             return;
           } catch (err) {
             console.log("Error accepting request!", err);
+          }
+        }
+
+        //remove friends
+
+        if (ev && ev.event === "unfriend") {
+          try {
+            const { id, event }: addFriendInterface = ev;
+
+            if (!id || !mongoose.isValidObjectId(id)) {
+              ws.send(JSON.stringify({ error: "No id found" }));
+              return;
+            }
+
+            const user = await User.findById(userID);
+
+            if (!user) {
+              ws.send(JSON.stringify({ error: "Unauthorized!" }));
+              return;
+            }
+
+            const frinedToRemove = await User.findById(id);
+            if (!frinedToRemove) {
+              ws.send(JSON.stringify({ error: "No such user found!" }));
+              return;
+            }
+
+            user.friends = user.friends.filter((f) => f._id.toString() !== id);
+
+            frinedToRemove.friends = frinedToRemove.friends.filter(
+              (f) => f._id.toString() !== userID
+            );
+
+            await frinedToRemove.save();
+            await user.save();
+
+            ws.send(
+              JSON.stringify({
+                message: `${frinedToRemove.username} removed from friends!`,
+                event,
+              })
+            );
+            return;
+          } catch (err) {
+            console.log(err);
+            return;
           }
         }
 
@@ -260,6 +312,25 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             .lean();
 
           ws.send(JSON.stringify({ searchResult, event: "searchFriend" }));
+          return;
+        }
+
+        if (ev && ev.event === "getNotifications") {
+          const notifications = await User.find({ _id: userID })
+            .select("pendingFriendRequest")
+            .populate({
+              path: "pendingFriendRequest",
+              select: "username profilePicture bio _id",
+            })
+            .lean();
+
+          ws.send(
+            JSON.stringify({
+              notifications: notifications[0].pendingFriendRequest,
+              event: "getNotifications",
+            })
+          );
+          return;
         }
       } catch (err) {
         console.log(err);

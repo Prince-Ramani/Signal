@@ -10,7 +10,8 @@ const FindFriends = memo(() => {
   if (!authUser) return;
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const { searchFriend, searchResult, sendFriendRequest } = useWebsocket();
+  const { searchFriend, searchResult, sendFriendRequest, removeFriend } =
+    useWebsocket();
 
   return (
     <div className="w-full  h-full flex select-none    ">
@@ -77,6 +78,7 @@ const FindFriends = memo(() => {
                   result={sr}
                   authUserId={authUser._id}
                   sendFriendRequest={sendFriendRequest}
+                  removeFriendRequest={removeFriend}
                 />
               )
             )}

@@ -13,6 +13,8 @@ import { useAuthUser } from "./Context/authUserContext";
 import { useWebsocket } from "./Context/Websocket";
 import Layout from "./Pages/Layout";
 import FindFriends from "./Pages/FindFriends/FindFriends";
+import Notifications from "./Pages/Notifications/Notification";
+import Profile from "./Pages/Profile/Profile";
 
 const App = () => {
   const { setAuthUser } = useAuthUser();
@@ -61,6 +63,14 @@ const App = () => {
           <Route
             path="/search"
             element={isSignedIn ? <FindFriends /> : <Navigate to="/signup" />}
+          />
+          <Route
+            path="/notifications"
+            element={isSignedIn ? <Notifications /> : <Navigate to="/signup" />}
+          />
+          <Route
+            path="/profile"
+            element={isSignedIn ? <Profile /> : <Navigate to="/signup" />}
           />
         </Route>
       </Routes>

@@ -21,7 +21,10 @@ const Customtooltip = memo(
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger>{children}</TooltipTrigger>
-          <TooltipContent side={side} className="bg-white scale-110 ">
+          <TooltipContent
+            side={side}
+            className="bg-white scale-110 hidden md:block "
+          >
             <p>{title}</p>
           </TooltipContent>
         </Tooltip>

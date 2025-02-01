@@ -11,10 +11,16 @@ interface searchResultInterface {
   };
   authUserId: string;
   sendFriendRequest: (id: string) => void;
+  removeFriendRequest: (id: string) => void;
 }
 
 const DisplaySearch = memo(
-  ({ result, authUserId, sendFriendRequest }: searchResultInterface) => {
+  ({
+    result,
+    authUserId,
+    sendFriendRequest,
+    removeFriendRequest,
+  }: searchResultInterface) => {
     const [pendingRequest, setPendingRequest] = useState(
       result.pendingFriendRequest.includes(authUserId)
     );
@@ -39,7 +45,9 @@ const DisplaySearch = memo(
             {result.username}
           </div>
           <div className="text-[13px] sm:text-sm  text-gray-400">
-            "Hey there! I'm using Signal. Let's chat!"
+            {result.bio.length > 50
+              ? result.bio.slice(0, 30) + "...."
+              : result.bio}
           </div>
         </div>
 
@@ -75,7 +83,13 @@ const DisplaySearch = memo(
 
             {isFriends ? (
               <div className="ml-auto">
-                <button className="bg-red-700  rounded-md p-1 sm:p-2 px-3 active:bg-green-500 transition-colors">
+                <button
+                  className="bg-red-700  rounded-md p-1 sm:p-2 px-3 active:bg-green-500 transition-colors"
+                  onClick={() => {
+                    removeFriendRequest(result._id);
+                    setIsFriends(false);
+                  }}
+                >
                   Remove
                 </button>
               </div>

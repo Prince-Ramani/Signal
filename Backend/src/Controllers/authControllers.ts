@@ -2,12 +2,24 @@ import { Request, Response } from "express";
 import { hashPassword, validateEmail, verifyPassword } from "../utils";
 import User from "../Models/UserModel";
 import { generateToken } from "../token";
+import { v2 as cloudinary } from "cloudinary";
+import { unlink } from "fs";
 
 interface createAccountTypes {
   username: string;
   email: string;
   password: string;
 }
+
+const defaultPics = [
+  "https://res.cloudinary.com/dwxzguawt/image/upload/v1735982611/m3rwtrv8z1yfxryyoew5_iwbxdw.png",
+  "https://res.cloudinary.com/dwxzguawt/image/upload/v1731396876/0861b76ad6e3b156c2b9d61feb6af864_ekjmdt.jpg",
+];
+
+const getProfilePicture = (): string => {
+  const pp = Math.floor(Math.random() * defaultPics.length);
+  return defaultPics[pp];
+};
 
 export const createAccount = async (
   req: Request,
@@ -66,11 +78,13 @@ export const createAccount = async (
     }
 
     const hashedPassword = await hashPassword(password);
+    const pp = getProfilePicture();
 
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
+      profilePicture: pp,
     });
 
     const token = generateToken(newUser._id.toString());
@@ -166,4 +180,86 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     console.log("Error in getMe controller", err);
     res.status(500).json({ error: "Internal sever error!" });
   }
+};
+
+export const updateProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { username, bio }: { username: string; bio: string } = req.body;
+    const userID = req.user;
+
+    let url;
+
+    if (!username || username.trim() === "") {
+      res.status(400).json({ error: "Username required!" });
+      return;
+    }
+
+    if (username.length < 3 || username.length > 12) {
+      res.status(400).json({
+        error:
+          "Your username must be between 3 and 12 characters long. Please try again!",
+      });
+      return;
+    }
+
+    if (!userID || userID.trim() === "") {
+      res.status(400).json({ error: "Unathorized" });
+      return;
+    }
+
+    const user = await User.findById(userID);
+
+    if (!user) {
+      res.status(400).json({ error: "Unathorized" });
+      return;
+    }
+
+    if (bio.length > 100) {
+      res.status(400).json({
+        error: "Bio must not exceed 100 characetrs. Please try again!",
+      });
+      return;
+    }
+
+    if (req.file && req.file.path) {
+      if (user.profilePicture && !defaultPics.includes(user.profilePicture)) {
+        const imgID = user.profilePicture.split("/").slice(-1)[0].split(".")[0];
+        const picID = `Signal/Profile-Picture/${imgID}`;
+        await cloudinary.uploader.destroy(picID, {
+          resource_type: "image",
+        });
+      }
+
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "image",
+          folder: "Signa;/Profile-Pictures",
+        });
+        unlink(req.file.path, (err) => {
+          if (err) console.log("Error unlinking file : ", err);
+        });
+        url = uploadResult.secure_url;
+      } catch (err) {
+        console.log("Error uploading profile picture : ", err);
+        res.status(400).json({ error: "Make sure internet is ON!" });
+        return;
+      }
+    }
+
+    if (url) user.profilePicture = url;
+    if (username) user.username = username;
+    if (bio) user.bio = bio;
+
+    await user.save();
+
+    res.status(200).json({ message: "Profile updated successfully!" });
+    return;
+  } catch (err) {
+    console.log("Error in getMe controller", err);
+    res.status(500).json({ error: "Internal sever error!" });
+  }
+  return;
 };

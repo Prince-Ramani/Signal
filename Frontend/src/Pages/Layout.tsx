@@ -6,7 +6,7 @@ const Layout = () => {
   return (
     <Wrapper className="bg-gray-800">
       <Sidebar />
-      <div className=" w-full xl:w-full min-h-full  ">
+      <div className=" w-full xl:w-full min-h-full pb-10 md:pb-0  ">
         <Outlet />
       </div>
     </Wrapper>

@@ -2,15 +2,20 @@ import { personalMessageFunc } from "@/lib/Types";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuthUser } from "./authUserContext";
 import { toast } from "react-toastify";
+import { useToast } from "@/hooks/use-toast";
 
 interface socketTypes {
   socket: WebSocket | null;
   sendPersonalMessage: (message: personalMessageFunc) => void;
   sendFriendRequest: (id: string) => void;
   searchFriend: (id: string) => void;
+  getNotifications: () => void;
+  totalNotifications: any[];
   isSignedIn: boolean;
+  acceptFriendRequest: (id: string) => void;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
   searchResult: any[];
+  removeFriend: (id: string) => void;
 }
 
 const WebSocketContext = createContext<socketTypes | undefined>(undefined);
@@ -19,7 +24,9 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const [searchResult, setSearchResult] = useState<any[]>([]);
+  const [totalNotifications, setTotalNotifcations] = useState<any[]>([]);
   const { authUser } = useAuthUser();
+  const { toast: stoast } = useToast();
 
   useEffect(() => {
     if (isSignedIn && !socket) {
@@ -40,6 +47,8 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
+        console.log(event);
+
         if (data.event === "searchFriend" && data.searchResult) {
           setSearchResult(data.searchResult);
         }
@@ -53,6 +62,32 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           if (data.message) {
             toast.success(data.message);
           }
+        }
+
+        if (data.event === "getNotifications") {
+          if ("message" in data) {
+            stoast({ title: data.message });
+            return;
+          }
+
+          if ("notifications" in data) {
+            toast.success(data.notifications);
+            setTotalNotifcations(data.notifications);
+          }
+        }
+
+        if (data.event === "acceptRequest" && data.message) {
+          toast.success(data.message);
+          return;
+        }
+
+        if (data.event === "unfriend") {
+          if (data.error) {
+            toast.error(data.error);
+            return;
+          }
+          toast.success(data.message);
+          return;
         }
       };
 
@@ -100,6 +135,17 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const acceptFriendRequest = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ id, event: "acceptRequest" }));
+    }
+  };
+  const removeFriend = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ id, event: "unfriend" }));
+    }
+  };
+
   const searchFriend = (username: string) => {
     if (!username || username.trim() === "") {
       if (searchResult.length > 0) setSearchResult([]);
@@ -109,6 +155,11 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ username, event: "searchFriend" }));
     }
+  };
+
+  const getNotifications = () => {
+    if (socket && socket.readyState === WebSocket.OPEN)
+      socket.send(JSON.stringify({ event: "getNotifications" }));
   };
 
   return (
@@ -121,6 +172,10 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         sendFriendRequest,
         searchFriend,
         searchResult,
+        getNotifications,
+        totalNotifications,
+        acceptFriendRequest,
+        removeFriend,
       }}
     >
       {children}

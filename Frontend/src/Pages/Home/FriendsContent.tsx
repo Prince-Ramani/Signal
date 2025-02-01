@@ -7,7 +7,7 @@ const FriendsContent = memo(() => {
       <div className="flex flex-col justify-center   items-center gap-3">
         <Handshake className="size-24" />
         <div className="  lg:text-3xl xl:text-4xl font-bold">Find Friends</div>
-        <div className="text-white/60 max-w-prose text-center">
+        <div className="text-white/60 max-w-prose text-center px-5">
           Discover new friends, chat, and connect through voice or video calls
           all in one place! Search for people by interests, location, and more,
           then start messaging or video chatting instantly. Make meaningful
