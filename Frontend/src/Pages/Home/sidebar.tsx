@@ -19,7 +19,7 @@ const Sidebar = memo(() => {
     setCurrenylOn(location.pathname);
   }, [location]);
   return (
-    <div className="w-full    fixed md:relative  md:flex-col md:min-h-full md:w-20  bottom-0   z-50   bg-primary-foreground flex  justify-around items-center md:justify-start  py-2 md:py-4  gap-2 md:gap-4  ">
+    <div className="w-full    fixed md:sticky md:top-0 max-h-screen  md:flex-col md:min-h-full md:w-20  bottom-0   z-50   bg-primary-foreground flex  justify-around items-center md:justify-start  py-2 md:py-4  gap-2 md:gap-4  ">
       <div
         className={`cursor-pointer ${
           currentlyOn === "/" ? "bg-green-400" : " md:hover:bg-white/20 "

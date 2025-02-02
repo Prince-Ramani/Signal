@@ -33,12 +33,9 @@ const DisplaySearch = memo(
         className={` flex  items-center p-2 border-b md:hover:bg-white/20 cursor-pointer`}
       >
         <img
-          src={
-            result.profilePicture ||
-            "https://res.cloudinary.com/dwxzguawt/image/upload/v1735982611/m3rwtrv8z1yfxryyoew5_iwbxdw.png"
-          }
+          src={result.profilePicture}
           alt="Profile picture"
-          className="size-12 rounded-full"
+          className="size-12 rounded-full object-cover"
         />
         <div className="flex flex-col gap-0.5 pl-3  w-full">
           <div className="font-bold tracking-wide text-lg">

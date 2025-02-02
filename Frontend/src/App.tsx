@@ -15,11 +15,15 @@ import Layout from "./Pages/Layout";
 import FindFriends from "./Pages/FindFriends/FindFriends";
 import Notifications from "./Pages/Notifications/Notification";
 import Profile from "./Pages/Profile/Profile";
+import { useState } from "react";
+import Connect from "./Pages/Connect";
 
 const App = () => {
   const { setAuthUser } = useAuthUser();
   const { setIsSignedIn } = useWebsocket();
-  const { data, isPending } = useQuery({
+  const [isSignedIn, setSs] = useState<boolean | null>(null);
+
+  const { isPending } = useQuery({
     queryKey: ["authUser"],
     queryFn: async () => {
       const res = await fetch(`/api/me`);
@@ -28,13 +32,15 @@ const App = () => {
 
       setAuthUser(data);
       setIsSignedIn(true);
+      setSs(false);
 
+      setTimeout(() => {
+        setSs(true);
+      }, 2000);
       return data;
     },
     retry: false,
   });
-
-  const isSignedIn = !!data?._id && !data?.error;
 
   if (isPending) {
     return (
@@ -42,6 +48,10 @@ const App = () => {
         <Loading />
       </div>
     );
+  }
+
+  if (!isSignedIn && isSignedIn !== null) {
+    return <Connect />;
   }
 
   return (

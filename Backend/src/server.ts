@@ -332,11 +332,31 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           );
           return;
         }
+
+        if (ev && ev.event === "getFriends") {
+          const { event } = ev;
+          const totalFriends = await User.find({ _id: userID })
+            .select("friends")
+            .populate({
+              path: "friends",
+              select: "username profilePicture bio _id",
+            })
+            .lean();
+
+          ws.send(
+            JSON.stringify({
+              friends: totalFriends[0].friends,
+              event,
+            })
+          );
+          return;
+        }
       } catch (err) {
         console.log(err);
         ws.send(
           JSON.stringify({
             error: "Internal server error: Failed to parse the message.",
+            event: "getNotifications",
           })
         );
       }

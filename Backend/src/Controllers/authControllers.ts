@@ -217,7 +217,7 @@ export const updateProfile = async (
       return;
     }
 
-    if (bio.length > 100) {
+    if (bio && bio.length > 100) {
       res.status(400).json({
         error: "Bio must not exceed 100 characetrs. Please try again!",
       });
@@ -227,7 +227,7 @@ export const updateProfile = async (
     if (req.file && req.file.path) {
       if (user.profilePicture && !defaultPics.includes(user.profilePicture)) {
         const imgID = user.profilePicture.split("/").slice(-1)[0].split(".")[0];
-        const picID = `Signal/Profile-Picture/${imgID}`;
+        const picID = `Signal/Profile-Pictures/${imgID}`;
         await cloudinary.uploader.destroy(picID, {
           resource_type: "image",
         });
@@ -236,7 +236,7 @@ export const updateProfile = async (
       try {
         const uploadResult = await cloudinary.uploader.upload(req.file.path, {
           resource_type: "image",
-          folder: "Signa;/Profile-Pictures",
+          folder: "Signal/Profile-Pictures",
         });
         unlink(req.file.path, (err) => {
           if (err) console.log("Error unlinking file : ", err);
@@ -258,8 +258,8 @@ export const updateProfile = async (
     res.status(200).json({ message: "Profile updated successfully!" });
     return;
   } catch (err) {
-    console.log("Error in getMe controller", err);
-    res.status(500).json({ error: "Internal sever error!" });
+    console.log("Error in updateProfile controller", err);
+    res.status(500).json({ error: "Make sure internet is ON!" });
   }
   return;
 };

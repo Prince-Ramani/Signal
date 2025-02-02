@@ -3,7 +3,7 @@ import { memo } from "react";
 
 const Nomessage = memo(() => {
   return (
-    <div className="w-full h-full flex justify-center relative bg-primary-foreground  select-none flex-col ">
+    <div className="w-full h-full max-h-screen sticky top-0 flex justify-center  bg-primary-foreground  select-none flex-col ">
       <div className="flex flex-col justify-center   items-center gap-3">
         <Laptop className="size-24" />
         <div className="  lg:text-3xl xl:text-4xl font-bold">Signal Web</div>

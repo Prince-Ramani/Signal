@@ -10,7 +10,10 @@ interface socketTypes {
   sendFriendRequest: (id: string) => void;
   searchFriend: (id: string) => void;
   getNotifications: () => void;
+  getFriends: () => void;
+
   totalNotifications: any[];
+  totalFriends: any[];
   isSignedIn: boolean;
   acceptFriendRequest: (id: string) => void;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
@@ -25,6 +28,8 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [totalNotifications, setTotalNotifcations] = useState<any[]>([]);
+  const [totalFriends, setTotalFriends] = useState<any[]>([]);
+
   const { authUser } = useAuthUser();
   const { toast: stoast } = useToast();
 
@@ -46,8 +51,6 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-
-        console.log(event);
 
         if (data.event === "searchFriend" && data.searchResult) {
           setSearchResult(data.searchResult);
@@ -87,6 +90,20 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
             return;
           }
           toast.success(data.message);
+          return;
+        }
+        if (data.event === "getFriends") {
+          if (data.error) {
+            toast.error(data.error);
+            return;
+          }
+
+          if ("friends" in data) {
+            for (let i = 0; i < 10; i++) {
+              setTotalFriends(data.friends);
+            }
+          }
+
           return;
         }
       };
@@ -162,6 +179,11 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       socket.send(JSON.stringify({ event: "getNotifications" }));
   };
 
+  const getFriends = () => {
+    if (socket && socket.readyState === WebSocket.OPEN)
+      socket.send(JSON.stringify({ event: "getFriends" }));
+  };
+
   return (
     <WebSocketContext.Provider
       value={{
@@ -176,6 +198,8 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         totalNotifications,
         acceptFriendRequest,
         removeFriend,
+        totalFriends,
+        getFriends,
       }}
     >
       {children}
