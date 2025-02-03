@@ -1,22 +1,36 @@
-import { personalMessageFunc } from "@/lib/Types";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useAuthUser } from "./authUserContext";
 import { toast } from "react-toastify";
 import { useToast } from "@/hooks/use-toast";
 
 interface socketTypes {
   socket: WebSocket | null;
-  sendPersonalMessage: (message: personalMessageFunc) => void;
+  sendPersonalMessage: (message: { message: string; to: string }) => void;
   sendFriendRequest: (id: string) => void;
+  getHistory: (id: string) => void;
   searchFriend: (id: string) => void;
   getNotifications: () => void;
   getFriends: () => void;
 
   totalNotifications: any[];
+  currentChat: any;
+
   totalFriends: any[];
+
   isSignedIn: boolean;
   acceptFriendRequest: (id: string) => void;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
+  setCurrentChat: React.Dispatch<React.SetStateAction<any>>;
+
+  setIsChatting: React.Dispatch<React.SetStateAction<boolean>>;
+  isChatting: boolean;
+
   searchResult: any[];
   removeFriend: (id: string) => void;
 }
@@ -29,9 +43,18 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [totalNotifications, setTotalNotifcations] = useState<any[]>([]);
   const [totalFriends, setTotalFriends] = useState<any[]>([]);
+  const [currentChat, setCurrentChat] = useState<any>();
+  const currentChatRef = useRef<any>(null);
+  const [isChatting, setIsChatting] = useState(false);
 
   const { authUser } = useAuthUser();
   const { toast: stoast } = useToast();
+
+  useEffect(() => {
+    if (currentChat) {
+      currentChatRef.current = currentChat.chatInfo._id;
+    }
+  }, [currentChat]);
 
   useEffect(() => {
     if (isSignedIn && !socket) {
@@ -51,6 +74,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log(data);
 
         if (data.event === "searchFriend" && data.searchResult) {
           setSearchResult(data.searchResult);
@@ -99,12 +123,60 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           if ("friends" in data) {
-            for (let i = 0; i < 10; i++) {
-              setTotalFriends(data.friends);
-            }
+            setTotalFriends(data.friends);
           }
 
           return;
+        }
+
+        if (data.event === "getHistory") {
+          if ("currentChatInfo" in data) setCurrentChat(data.currentChatInfo);
+          setCurrentChat(data.currentChatInfo);
+          setIsChatting(true);
+        }
+
+        if (data.event === "receiveMessage" && data.message) {
+          const mess = data.message;
+
+          const cc = currentChatRef.current;
+          const from = mess.from;
+
+          if (cc && from && cc === from) {
+            const chat = {
+              ...mess,
+            };
+
+            setCurrentChat((prevChat: any) => {
+              return {
+                ...prevChat,
+                chatHistory: [...prevChat?.chatHistory, chat],
+              };
+            });
+            return;
+          }
+
+          stoast({ title: `New message` });
+        }
+
+        if (data.event === "sendMessage" && data.message) {
+          const mess = data.message;
+
+          const cc = currentChatRef.current;
+          const to = mess.to;
+
+          if (cc && to && cc === to) {
+            const chat = {
+              ...mess,
+            };
+
+            setCurrentChat((prevChat: any) => {
+              return {
+                ...prevChat,
+                chatHistory: [...prevChat?.chatHistory, chat],
+              };
+            });
+            return;
+          }
         }
       };
 
@@ -117,7 +189,10 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isSignedIn]);
 
-  const sendPersonalMessage = (messageToSend: personalMessageFunc) => {
+  const sendPersonalMessage = (messageToSend: {
+    message: string;
+    to: string;
+  }) => {
     const { message, to } = messageToSend;
 
     if (!authUser || !authUser?._id) {
@@ -141,6 +216,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           event: "sendMessage",
           ...messageToSend,
           from: authUser._id,
+          messageType: "Personal",
         })
       );
     }
@@ -184,6 +260,11 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       socket.send(JSON.stringify({ event: "getFriends" }));
   };
 
+  const getHistory = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN)
+      socket.send(JSON.stringify({ event: "getHistory", id }));
+  };
+
   return (
     <WebSocketContext.Provider
       value={{
@@ -200,6 +281,11 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         removeFriend,
         totalFriends,
         getFriends,
+        getHistory,
+        currentChat,
+        setIsChatting,
+        isChatting,
+        setCurrentChat,
       }}
     >
       {children}

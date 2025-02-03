@@ -1,6 +1,5 @@
 import { memo, useRef, useState } from "react";
 import { ArrowLeft, Search, XIcon } from "lucide-react";
-import FriendsContent from "../Home/FriendsContent";
 import { useWebsocket } from "@/Context/Websocket";
 import DisplaySearch from "./DisplaySearch";
 import { useAuthUser } from "@/Context/authUserContext";
@@ -15,7 +14,7 @@ const FindFriends = memo(() => {
 
   return (
     <div className="w-full  h-full flex select-none    ">
-      <div className=" w-full xl:w-4/12   flex flex-col md:border-l md:border-r h-full  bg-background   ">
+      <div className=" w-full    flex flex-col md:border-l md:border-r h-full  bg-background   ">
         <div className="p-2 px-2  mt-3  w-full ">
           <div className="p-2  flex items-center h-10 gap-2 bg-foreground rounded-xl cursor-pointer">
             <button className="mx-3">
@@ -86,9 +85,6 @@ const FindFriends = memo(() => {
         ) : (
           ""
         )}
-      </div>
-      <div className="h-full w-full hidden lg:block ">
-        <FriendsContent />
       </div>
     </div>
   );

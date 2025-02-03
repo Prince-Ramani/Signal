@@ -51,7 +51,7 @@ const DisplayNoti = memo(
               }
             }}
           >
-            {isFriends ? "Remove" : "Add"}
+            {isFriends ? "Remove" : "Accept"}
           </button>
         </div>
       </div>

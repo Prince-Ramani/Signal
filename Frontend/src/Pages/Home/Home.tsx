@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Search, XIcon } from "lucide-react";
-import Nomessage from "./NoMessage";
 import { useWebsocket } from "@/Context/Websocket";
 
-const Home = () => {
+const Home = memo(() => {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const { getFriends, totalFriends } = useWebsocket();
+
+  const { getFriends, totalFriends, getHistory } = useWebsocket();
   const [searchedFriend, setSearchedFriend] = useState<any[]>([]);
   const [currentlyOn, setCurrenylOn] = useState<
     "All" | "Unread" | "Groups" | "Favourites"
@@ -40,7 +40,7 @@ const Home = () => {
 
   return (
     <div className="w-full  h-full flex select-none    ">
-      <div className=" w-full xl:w-4/12   flex md:border-l md:border-r h-full     ">
+      <div className=" w-full    flex md:border-l md:border-r h-full     ">
         <div className="  bg-background w-full ">
           <div className="h-12  flex items-center   bg-background  z-20  backdrop-blur-3xl      sticky top-0 px-2 gap-4 ">
             {" "}
@@ -113,10 +113,12 @@ const Home = () => {
                   <div
                     key={index}
                     className="flex gap-2 pl-2 hover:bg-border     items-center"
+                    onClick={() => getHistory(f._id)}
                   >
-                    <div className="border border-transparent">
-                      <div className="w-14 h-14 bg-white rounded-full pl-2 py-2  "></div>
-                    </div>
+                    <img
+                      className="size-14 shrink-0 object-cover select-none pointer-events-none bg-white rounded-full  "
+                      src={f.profilePicture}
+                    />
                     <div className="w-full h-20  border-t flex flex-col  justify-center   ">
                       <div className="font-bold tracking-wide  ">
                         {f.username}
@@ -139,9 +141,10 @@ const Home = () => {
                     key={index}
                     className="flex gap-2 pl-2 hover:bg-border     items-center"
                   >
-                    <div className="border border-transparent">
-                      <div className="w-14 h-14 bg-white rounded-full pl-2 py-2  "></div>
-                    </div>
+                    <img
+                      className="size-14 shrink-0 object-cover select-none pointer-events-none bg-white rounded-full  "
+                      src={f.profilePicture}
+                    />
                     <div className="w-full h-20  border-t flex flex-col  justify-center   ">
                       <div className="font-bold tracking-wide">
                         {f.username
@@ -173,11 +176,8 @@ const Home = () => {
           )}
         </div>
       </div>
-      <div className="h-full w-full hidden lg:block ">
-        <Nomessage />
-      </div>
     </div>
   );
-};
+});
 
 export default Home;

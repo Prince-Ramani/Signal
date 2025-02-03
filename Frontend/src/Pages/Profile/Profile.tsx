@@ -134,7 +134,7 @@ const Profile = memo(() => {
         ""
       )}
 
-      <div className=" w-full xl:w-4/12   flex flex-col md:border-l md:border-r h-full bg-background   ">
+      <div className=" w-full    flex flex-col md:border-l md:border-r h-full bg-background   ">
         <div>
           <div className="font-bold text-2xl p-4">Profile</div>
         </div>

@@ -19,7 +19,7 @@ const Notifications = memo(() => {
     console.log(totalNotifications);
   }, [totalNotifications]);
   return (
-    <div className=" w-full xl:w-4/12   flex flex-col md:border-l md:border-r h-full bg-background   ">
+    <div className=" w-full    flex flex-col md:border-l md:border-r h-full bg-background   ">
       <div>
         <div className="font-bold   text-2xl  p-3 px-4">Notifications</div>
       </div>{" "}

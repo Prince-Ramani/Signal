@@ -5,6 +5,7 @@ import Messages from "./Models/MessageModel";
 import { uploadImageToClodinary } from "./utils";
 import mongoose from "mongoose";
 import User from "./Models/UserModel";
+import { error, profile } from "console";
 
 interface sendMessageInterface {
   from: string;
@@ -46,6 +47,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
       try {
         const data = typeof message === "string" ? message : message.toString();
         const ev = JSON.parse(data);
+        console.log(ev);
 
         //sendmessage
 
@@ -62,7 +64,12 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           }: sendMessageInterface = ev;
 
           if (!from || !to || !message || !messageType) {
-            ws.send(JSON.stringify({ error: "Unauthorized" }));
+            ws.send(
+              JSON.stringify({
+                error: "Unauthorized",
+                event: "getNotifications",
+              })
+            );
             return;
           }
 
@@ -75,18 +82,21 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
           const savedMessage = await newMessage.save();
 
-          await savedMessage.populate({
-            path: "from",
-            select: "username profilePicture",
-          });
-
           const isOnline = usersMap.get(to);
 
           if (isOnline && isOnline.readyState === WebSocket.OPEN) {
-            isOnline.send(JSON.stringify(savedMessage));
+            isOnline.send(
+              JSON.stringify({
+                message: savedMessage,
+                event: "receiveMessage",
+              })
+            );
           }
 
-          ws.send("Message sent!");
+          ws.send(
+            JSON.stringify({ message: savedMessage, event: "sendMessage" })
+          );
+          return;
         }
 
         //send request
@@ -110,8 +120,6 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             }
 
             const user = await User.findById(id);
-
-            console.log(user);
 
             if (!user) {
               ws.send(JSON.stringify({ error: "No such user found!", event }));
@@ -245,7 +253,12 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             const { id, event }: addFriendInterface = ev;
 
             if (!id || !mongoose.isValidObjectId(id)) {
-              ws.send(JSON.stringify({ error: "No id found" }));
+              ws.send(
+                JSON.stringify({
+                  error: "No id found",
+                  event: "getNotifications",
+                })
+              );
               return;
             }
 
@@ -346,6 +359,61 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           ws.send(
             JSON.stringify({
               friends: totalFriends[0].friends,
+              event,
+            })
+          );
+          return;
+        }
+
+        if (ev && ev.event === "getHistory") {
+          const { event, id } = ev;
+
+          const friendToChat = await User.findById(id)
+            .select("profilePicture _id username bio friends")
+            .lean();
+
+          if (!friendToChat) {
+            ws.send(JSON.stringify({ error: "No such user found!", event }));
+            return;
+          }
+
+          const isFriends = friendToChat.friends.some(
+            (o) => o.toString() === userID
+          );
+
+          if (!isFriends) {
+            ws.send(
+              JSON.stringify({
+                error: "No such friend found!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          const chatHistory = await Messages.find({
+            $or: [
+              {
+                from: userID,
+                to: id,
+              },
+              {
+                from: id,
+                to: userID,
+              },
+            ],
+          }).sort({ createdAt: -1 });
+
+          const chatInfo = {
+            username: friendToChat.username,
+            bio: friendToChat.bio,
+            profilePicture: friendToChat.profilePicture,
+            _id: friendToChat._id,
+          };
+
+          ws.send(
+            JSON.stringify({
+              currentChatInfo: { chatHistory, chatInfo },
               event,
             })
           );
