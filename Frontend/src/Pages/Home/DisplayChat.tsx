@@ -21,13 +21,35 @@ const DisplayChat = memo(
 
     return (
       <div
-        className={`bg-blue-700 text-lg gap-1 max-w-[75%] sm:max-w-prose flex flex-col items-center tracking-wide p-2 w-fit rounded-md  ${
+        className={`bg-zinc-900 text-lg gap-0.5  max-w-[90%] sm:max-w-prose min-w-20 flex flex-col  tracking-wide p-2 w-fit rounded-md  ${
           authUserID === chat.from
             ? "rounded-tr-none rounded-br-2xl ml-auto"
             : " rounded-tl-none rounded-bl-2xl mr-auto"
         } `}
       >
-        <div className="break-all text-sm flex flex-col   ">
+        {chat.attachedImages && chat.attachedImages.length > 0 ? (
+          <div
+            className={`grid gap-2 mb-4  ${
+              chat.attachedImages.length === 2
+                ? " grid-cols-2   "
+                : chat.attachedImages.length === 3
+                ? "grid-cols-2  "
+                : ""
+            }`}
+          >
+            {chat.attachedImages.map((im: string) => {
+              return (
+                <img
+                  src={im}
+                  className={`rounded-md border object-cover aspect-square max-h-96   `}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          ""
+        )}
+        <div className="break-all text-sm sm:text-base  sm:tracking-wide flex flex-col   ">
           {chat.message.length > 768 && !readMore ? (
             <>
               {chat.message.slice(0, 769)}

@@ -11,7 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 
 interface socketTypes {
   socket: WebSocket | null;
-  sendPersonalMessage: (message: { message: string; to: string }) => void;
+  sendPersonalMessage: (message: {
+    message: string;
+    to: string;
+    attachedImages: string[];
+  }) => void;
   sendFriendRequest: (id: string) => void;
   getHistory: (id: string) => void;
   searchFriend: (id: string) => void;
@@ -192,8 +196,9 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const sendPersonalMessage = (messageToSend: {
     message: string;
     to: string;
+    attachedImages: string[];
   }) => {
-    const { message, to } = messageToSend;
+    const { message, to, attachedImages } = messageToSend;
 
     if (!authUser || !authUser?._id) {
       toast.error("Unauthorized!");
@@ -205,7 +210,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    if (!message || message.trim() === "") {
+    if ((!message || message.trim()) === "" && attachedImages.length === 0) {
       toast.error("Message content required");
       return;
     }

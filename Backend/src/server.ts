@@ -5,8 +5,8 @@ import Messages from "./Models/MessageModel";
 import { uploadImageToClodinary } from "./utils";
 import mongoose from "mongoose";
 import User from "./Models/UserModel";
-import { error, profile } from "console";
-
+import { v2 as cloudinary } from "cloudinary";
+import { Readable } from "stream";
 interface sendMessageInterface {
   from: string;
   to: string;
@@ -47,7 +47,6 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
       try {
         const data = typeof message === "string" ? message : message.toString();
         const ev = JSON.parse(data);
-        console.log(ev);
 
         //sendmessage
 
@@ -73,11 +72,54 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             return;
           }
 
+          var uploadedImages: string[] = [];
+
+          if (attachedImages && attachedImages?.length > 0) {
+            try {
+              const uploadImage = (img: string) => {
+                return new Promise((resolve, reject) => {
+                  const imgBuffer = Buffer.from(img, "base64");
+
+                  const uploadStream = cloudinary.uploader.upload_stream(
+                    (error, result) => {
+                      if (error) {
+                        reject(error);
+                      } else {
+                        if (result && result.secure_url) {
+                          uploadedImages.push(result.secure_url);
+                          resolve(result.secure_url);
+                        } else {
+                          reject(new Error("No secure URL returned"));
+                        }
+                      }
+                    }
+                  );
+
+                  const readableStream = new Readable();
+                  readableStream.push(imgBuffer);
+                  readableStream.push(null);
+                  readableStream.pipe(uploadStream);
+                });
+              };
+
+              await Promise.all(attachedImages.map((img) => uploadImage(img)));
+            } catch (err) {
+              console.log("error uploading message images! : ", err);
+              ws.send(
+                JSON.stringify({
+                  event: "getNotifications",
+                  error: "Error uplaoding images. Make sure internet is ON! ",
+                })
+              );
+            }
+          }
+
           const newMessage = new Messages({
             from,
             to,
             message,
             messageType,
+            attachedImages: uploadedImages,
           });
 
           const savedMessage = await newMessage.save();
@@ -96,6 +138,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           ws.send(
             JSON.stringify({ message: savedMessage, event: "sendMessage" })
           );
+
           return;
         }
 
@@ -402,7 +445,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
                 to: userID,
               },
             ],
-          }).sort({ createdAt: -1 });
+          }).sort({ createdAt: 1 });
 
           const chatInfo = {
             username: friendToChat.username,
