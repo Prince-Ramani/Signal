@@ -10,6 +10,7 @@ import {
   Plus,
   SendHorizonal,
   Sticker,
+  Video,
   X,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ import Customtooltip from "@/components/ Customtooltip";
 import DisplayChat from "./DisplayChat";
 import { useAuthUser } from "@/Context/authUserContext";
 import { toast } from "react-toastify";
+import Loading from "@/components/Loading";
 
 const ChatBox = memo(() => {
   const { currentChat, sendPersonalMessage, setIsChatting, setCurrentChat } =
@@ -31,23 +33,28 @@ const ChatBox = memo(() => {
   const [message, setMessage] = useState("");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [isPending, setIsPending] = useState(false);
+  const [video, setVideo] = useState<string>("");
+  const [videoPreview, setVideoPreview] = useState("");
 
   const messageRef = useRef<HTMLDivElement | null>(null);
 
   if (!authUser) {
     return;
   }
+
   const handleClick = () => {
     if (currentChat && currentChat.chatInfo._id) {
       const messageToSend = {
         message: message,
         to: currentChat.chatInfo._id,
         attachedImages: selectedImages,
+        attachedVideo: video,
       };
 
       setMessage("");
-      setSelectedImages([]);
-      setImagePreview([]);
+
+      if (selectedImages.length > 0) setIsPending(true);
 
       sendPersonalMessage(messageToSend);
     }
@@ -61,6 +68,10 @@ const ChatBox = memo(() => {
       files.length > 0 &&
       files.length + selectedImages.length <= 4
     ) {
+      if (video || videoPreview) {
+        setVideo("");
+        setVideoPreview("");
+      }
       Array.from(files).forEach((im) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -83,6 +94,29 @@ const ChatBox = memo(() => {
     }
   };
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //@ts-ignore
+    const video = e.target.files[0];
+
+    if (video) {
+      if (selectedImages.length > 0 || imagePreview.length > 0) {
+        setSelectedImages([]);
+        setImagePreview([]);
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result?.toString().split(",")[1];
+        if (reader.result) {
+          setVideoPreview(reader.result as string);
+        }
+        if (base64data) {
+          setVideo(base64data);
+        }
+      };
+      reader.readAsDataURL(video);
+    }
+  };
+
   const handlRemove = (index: number) => {
     setImagePreview((prev) => prev.filter((_, i) => i !== index));
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
@@ -90,6 +124,22 @@ const ChatBox = memo(() => {
 
   useEffect(() => {
     messageRef.current?.scrollIntoView({ behavior: "smooth" });
+
+    if (selectedImages.length > 0 && isPending && currentChat) {
+      const lastChat =
+        currentChat.chatHistory[currentChat.chatHistory.length - 1];
+      const isUploaded =
+        lastChat.from === authUser._id &&
+        lastChat.attachedImages.length === selectedImages.length;
+
+      if (isUploaded && isPending) {
+        setIsPending(false);
+        setImagePreview([]);
+        setVideo("");
+        setVideoPreview("");
+        setSelectedImages([]);
+      }
+    }
   }, [currentChat]);
 
   return (
@@ -131,7 +181,13 @@ const ChatBox = memo(() => {
               </div>
             </div>
           </div>
-          <div className="flex gap-4 flex-col p-1 px-4 h-full no-scrollbar  overflow-y-auto bg-gray-950  py-24  z-20">
+          <div
+            className={`flex gap-4 flex-col p-1 px-4 h-full no-scrollbar  overflow-y-auto bg-gray-950  py-24 ${
+              isPending || selectedImages.length > 0 || videoPreview
+                ? "pb-64 sm:pb-72 xl:pb-[450px]"
+                : ""
+            } z-20`}
+          >
             {currentChat.chatHistory.map(
               (his: {
                 _id: string;
@@ -158,7 +214,50 @@ const ChatBox = memo(() => {
             <div ref={messageRef} />
           </div>
 
-          <div className="absolute bottom-0   bg-slate-900 w-full flex flex-col justify-around   px-2 sm:px-4 ">
+          <div
+            className={`absolute bottom-0   bg-slate-900 w-full flex flex-col justify-around   px-2 sm:px-4 ${
+              isPending
+                ? " pointer-events-none animate-pulse  cursor-not-allowed  "
+                : ""
+            } `}
+          >
+            {isPending ? (
+              <div
+                className="flex justify-center items-center p-2
+            "
+              >
+                {isPending ? <Loading /> : ""}
+              </div>
+            ) : (
+              ""
+            )}
+
+            {videoPreview ? (
+              <div className="flex justify-center items-center flex-col ">
+                <div>
+                  <video
+                    src={videoPreview}
+                    autoPlay={true}
+                    controls={true}
+                    className=" max-h-72 xl:max-h-96 border aspect-video rounded-md border-white/5"
+                  />
+                </div>
+                <div
+                  className="p-1 sm:p-2 hover:bg-white/20 rounded-full flex justify-center items-center cursor-pointer"
+                  onClick={() => {
+                    setVideoPreview("");
+                    setVideo("");
+                  }}
+                >
+                  <Customtooltip title="Remove">
+                    <X className="size-5 sm:size-6 md:size-7 text-red-600" />
+                  </Customtooltip>
+                </div>{" "}
+              </div>
+            ) : (
+              ""
+            )}
+
             {imagePreview.length > 0 ? (
               <div className="flex pt-2 gap-2">
                 {imagePreview.map((i, index) => (
@@ -184,7 +283,7 @@ const ChatBox = memo(() => {
             ) : (
               ""
             )}
-            <div className="   flex justify-around  items-center w-full   rounded-full gap-2 sm:gap-3 md:gap-4  p-1 sm:p-2">
+            <div className="   flex justify-around   items-center w-full   rounded-full gap-2 sm:gap-3 md:gap-4  p-1 sm:p-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <div>
@@ -193,7 +292,7 @@ const ChatBox = memo(() => {
                 </PopoverTrigger>
                 <PopoverContent className="w-fit">
                   <div>
-                    <div>
+                    <div className="flex flex-col gap-4">
                       <input
                         type="file"
                         className="hidden"
@@ -202,8 +301,26 @@ const ChatBox = memo(() => {
                         accept="images/*"
                         onChange={handleImageChange}
                       />
+                      <input
+                        type="file"
+                        className="hidden"
+                        id="videoUpload"
+                        multiple={true}
+                        accept="videos/*"
+                        onChange={handleVideoChange}
+                      />
                       <label htmlFor="imageUpload">
-                        <Image />
+                        <div className="flex gap-2 cursor-pointer  text-blue-500">
+                          <Image />
+                          <div className="font-semibold ">Photos</div>
+                        </div>
+                      </label>
+                      <div className="border-t "></div>
+                      <label htmlFor="videoUpload">
+                        <div className="flex gap-2 cursor-pointer text-blue-500">
+                          <Video />
+                          <div className="font-semibold ">Videos</div>
+                        </div>
                       </label>
                     </div>
                   </div>
@@ -219,11 +336,10 @@ const ChatBox = memo(() => {
                   value={message}
                   maxRows={3}
                   onKeyDown={(e) => {
-                    if (
-                      (e.key === "Enter" && message.trim().length > 0) ||
-                      selectedImages.length > 0
-                    ) {
+                    if (e.key === "Enter" && message.trim() !== "") {
                       e.preventDefault();
+                      console.log(e.key);
+
                       handleClick();
                     }
                   }}

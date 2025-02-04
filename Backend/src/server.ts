@@ -113,6 +113,44 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
               );
             }
           }
+          if (attachedVideo) {
+            try {
+              const uploadVideo = (vid: string) => {
+                return new Promise((resolve, reject) => {
+                  const vidBuffer = Buffer.from(vid, "base64");
+
+                  const uploadStream = cloudinary.uploader.upload_stream(
+                    (error, result) => {
+                      if (error) {
+                        reject(error);
+                      } else {
+                        if (result && result.secure_url) {
+                          uploadedImages.push(result.secure_url);
+                          resolve(result.secure_url);
+                        } else {
+                          reject(new Error("No secure URL returned"));
+                        }
+                      }
+                    }
+                  );
+
+                  const readableStream = new Readable();
+                  readableStream.push(imgBuffer);
+                  readableStream.push(null);
+                  readableStream.pipe(uploadStream);
+                });
+              };
+              await uploadVideo(vid);
+            } catch (err) {
+              console.log("error uploading message images! : ", err);
+              ws.send(
+                JSON.stringify({
+                  event: "getNotifications",
+                  error: "Error uplaoding images. Make sure internet is ON! ",
+                })
+              );
+            }
+          }
 
           const newMessage = new Messages({
             from,

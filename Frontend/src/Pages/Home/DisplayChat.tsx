@@ -39,10 +39,12 @@ const DisplayChat = memo(
           >
             {chat.attachedImages.map((im: string) => {
               return (
-                <img
-                  src={im}
-                  className={`rounded-md border object-cover aspect-square max-h-96   `}
-                />
+                <a href={im} target="_blank">
+                  <img
+                    src={im}
+                    className={`rounded-md border object-cover aspect-square max-h-96   `}
+                  />
+                </a>
               );
             })}
           </div>
