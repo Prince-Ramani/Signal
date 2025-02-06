@@ -37,12 +37,29 @@ const MessageSchema = new mongoose.Schema(
     },
     attachedDocuments: {
       required: false,
-      type: [String],
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          doc: {
+            type: String,
+            required: true,
+          },
+        },
+      ],
       default: [],
     },
     attachedImages: {
       required: false,
       type: [String],
+      default: [],
+    },
+    deletedBy: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      required: false,
       default: [],
     },
   },

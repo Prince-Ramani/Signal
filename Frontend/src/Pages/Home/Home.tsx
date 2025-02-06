@@ -147,10 +147,8 @@ const Home = memo(() => {
                     />
                     <div className="w-full h-20  border-t flex flex-col  justify-center   ">
                       <div className="font-bold tracking-wide">
-                        {f.username
-                          .toLowerCase()
-                          .split("")
-                          .map((s: string, index: number) =>
+                        {f.username.toLowerCase().split("")(
+                          (s: string, index: number) =>
                             search.toLocaleLowerCase().includes(s) ? (
                               <span
                                 className="font-extrabold text-green-400"
@@ -161,7 +159,7 @@ const Home = memo(() => {
                             ) : (
                               s
                             )
-                          )}
+                        )}
                       </div>
                       {/* <div className="text-sm text-gray-400  tracking-wider">
                       {f.lastMessage.length > 30

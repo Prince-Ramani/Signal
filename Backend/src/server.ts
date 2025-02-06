@@ -3,7 +3,7 @@ import * as cookie from "cookie";
 import { validateToken } from "./token";
 import Messages from "./Models/MessageModel";
 import { uploadImageToClodinary } from "./utils";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import User from "./Models/UserModel";
 import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
@@ -14,7 +14,7 @@ interface sendMessageInterface {
   messageType: "Personal" | "Group";
   isReply?: string;
   attachedVideo?: string;
-  attachedDocuments?: string[];
+  attachedDocuments?: { name: string; doc: string }[];
   attachedImages?: string[];
 }
 
@@ -22,6 +22,33 @@ interface addFriendInterface {
   event: string;
   id: string;
 }
+
+const IMAGE_FOLDER = "Signal/Photos";
+const VIDEO_FOLDER = "Signal/Videos";
+const DOCS_FOLDER = "Signal/Docs";
+
+const deleteDocument = async (docId: string) => {
+  const docID = docId.split("/").slice(-1)[0].split(".")[0];
+  const ID = `${DOCS_FOLDER}/${docID}`;
+
+  return cloudinary.uploader.destroy(ID, { resource_type: "raw" });
+};
+
+const deleteImage = async (imageId: string) => {
+  const imgID = imageId.split("/").slice(-1)[0].split(".")[0];
+  const ID = `${IMAGE_FOLDER}/${imgID}`;
+
+  console.log(ID);
+
+  return cloudinary.uploader.destroy(ID, { resource_type: "image" });
+};
+
+const deleteVideo = async (videoId: string) => {
+  const vidID = videoId.split("/").slice(-1)[0].split(".")[0];
+  const ID = `${VIDEO_FOLDER}/${vidID}`;
+
+  return cloudinary.uploader.destroy(ID, { resource_type: "video" });
+};
 
 export const setUpWebSocketServer = (wss: WebSocketServer) => {
   const usersMap = new Map<string, ws>();
@@ -73,14 +100,17 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           }
 
           var uploadedImages: string[] = [];
+          var uploadedVideo = "";
+          var uploadedDocs: { name: string; doc: string }[] = [];
 
-          if (attachedImages && attachedImages?.length > 0) {
+          if (attachedImages && attachedImages.length > 0) {
             try {
               const uploadImage = (img: string) => {
                 return new Promise((resolve, reject) => {
                   const imgBuffer = Buffer.from(img, "base64");
 
                   const uploadStream = cloudinary.uploader.upload_stream(
+                    { resource_type: "image", folder: IMAGE_FOLDER },
                     (error, result) => {
                       if (error) {
                         reject(error);
@@ -113,19 +143,20 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
               );
             }
           }
-          if (attachedVideo) {
+          if (attachedVideo && attachedVideo.trim() !== "") {
             try {
               const uploadVideo = (vid: string) => {
                 return new Promise((resolve, reject) => {
                   const vidBuffer = Buffer.from(vid, "base64");
 
                   const uploadStream = cloudinary.uploader.upload_stream(
+                    { resource_type: "video", folder: VIDEO_FOLDER },
                     (error, result) => {
                       if (error) {
                         reject(error);
                       } else {
                         if (result && result.secure_url) {
-                          uploadedImages.push(result.secure_url);
+                          uploadedVideo = result.secure_url;
                           resolve(result.secure_url);
                         } else {
                           reject(new Error("No secure URL returned"));
@@ -135,18 +166,65 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
                   );
 
                   const readableStream = new Readable();
-                  readableStream.push(imgBuffer);
+                  readableStream.push(vidBuffer);
                   readableStream.push(null);
                   readableStream.pipe(uploadStream);
                 });
               };
-              await uploadVideo(vid);
+              await uploadVideo(attachedVideo);
             } catch (err) {
-              console.log("error uploading message images! : ", err);
+              console.log("error uploading message video! : ", err);
               ws.send(
                 JSON.stringify({
                   event: "getNotifications",
-                  error: "Error uplaoding images. Make sure internet is ON! ",
+                  error: "Error uplaoding video. Make sure internet is ON! ",
+                })
+              );
+            }
+          }
+
+          if (attachedDocuments && attachedDocuments.length > 0) {
+            try {
+              const uploadDocs = (doc: { name: string; doc: string }) => {
+                return new Promise((resolve, reject) => {
+                  const docBuffer = Buffer.from(doc.doc, "base64");
+
+                  const uploadStream = cloudinary.uploader.upload_stream(
+                    { resource_type: "raw", folder: DOCS_FOLDER },
+                    (error, result) => {
+                      if (error) {
+                        reject(error);
+                      } else {
+                        if (result && result.secure_url) {
+                          uploadedDocs.push({
+                            doc: result.secure_url,
+                            name: doc.name,
+                          });
+                          resolve(result.secure_url);
+                        } else {
+                          reject(new Error("No secure URL returned"));
+                        }
+                      }
+                    }
+                  );
+
+                  const readableStream = new Readable();
+                  readableStream.push(docBuffer);
+                  readableStream.push(null);
+                  readableStream.pipe(uploadStream);
+                });
+              };
+
+              await Promise.all(
+                attachedDocuments.map((doc) => uploadDocs(doc))
+              );
+            } catch (err) {
+              console.log("error uploading message docs! : ", err);
+              ws.send(
+                JSON.stringify({
+                  event: "getNotifications",
+                  error:
+                    "Error uplaoding documents. Make sure internet is ON! ",
                 })
               );
             }
@@ -158,6 +236,8 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             message,
             messageType,
             attachedImages: uploadedImages,
+            attachedVideo: uploadedVideo,
+            attachedDocuments: uploadedDocs,
           });
 
           const savedMessage = await newMessage.save();
@@ -177,6 +257,161 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             JSON.stringify({ message: savedMessage, event: "sendMessage" })
           );
 
+          return;
+        }
+
+        //deleteMessage
+        if (ev && ev.event === "deleteMessage") {
+          const { ids, toID } = ev;
+
+          if (!toID) {
+            ws.send(
+              JSON.stringify({
+                error: "Friend id requied!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          if (ids && ids.length > 0) {
+            const messages = await Messages.find({
+              $or: [
+                {
+                  _id: { $in: ids },
+                  from: userID,
+                  to: toID,
+                  deletedBy: { $nin: userID },
+                },
+                {
+                  _id: { $in: ids },
+                  from: toID,
+                  to: userID,
+                  deletedBy: { $nin: userID },
+                },
+              ],
+            });
+
+            if (!messages || messages.length === 0) {
+              ws.send(
+                JSON.stringify({
+                  error: "No such message found!",
+                  event: "getNotifications",
+                })
+              );
+              return;
+            }
+
+            await Messages.updateMany(
+              {
+                $or: [
+                  {
+                    _id: { $in: ids },
+                    from: userID,
+                    to: toID,
+                  },
+                  {
+                    _id: { $in: ids },
+                    from: toID,
+                    to: userID,
+                  },
+                ],
+              },
+              { $push: { deletedBy: new mongoose.Types.ObjectId(userID) } }
+            );
+
+            ws.send(
+              JSON.stringify({
+                message: "Messages deleted!",
+                event: "deleteMessage",
+                deletedMessages: ids,
+              })
+            );
+            return;
+          }
+
+          await Messages.updateMany(
+            {
+              $or: [
+                { from: userID, to: toID, deletedBy: { $nin: userID } },
+                {
+                  from: toID,
+                  to: userID,
+                  deletedBy: { $nin: userID },
+                },
+              ],
+            },
+            { $push: { deletedBy: new mongoose.Types.ObjectId(userID) } }
+          );
+
+          const messagesToDeletePermanently = await Messages.find({
+            $or: [
+              {
+                from: userID,
+                to: toID,
+                deletedBy: { $all: [userID, toID] },
+              },
+              { to: userID, from: toID, deletedBy: { $all: [userID, toID] } },
+            ],
+          });
+
+          var docsToDelete: any = [];
+          var imagesToDelete: any = [];
+          var videosToDelete: any = [];
+
+          messagesToDeletePermanently.forEach((m) => {
+            if (m.attachedDocuments && m.attachedDocuments.length > 0) {
+              m.attachedDocuments.forEach((d) => {
+                docsToDelete.push(deleteDocument(d.doc));
+              });
+            }
+
+            if (m.attachedImages && m.attachedImages.length > 0) {
+              m.attachedImages.forEach((i) => {
+                imagesToDelete.push(deleteImage(i));
+              });
+            }
+
+            if (m.attachedVideo) {
+              videosToDelete.push(deleteVideo(m.attachedVideo));
+            }
+          });
+
+          async function deleteAllAttachments() {
+            try {
+              const allPromises = [
+                ...docsToDelete,
+                ...imagesToDelete,
+                ...videosToDelete,
+              ];
+
+              const results = await Promise.all(allPromises);
+
+              console.log("All deletions completed:", results);
+            } catch (error) {
+              console.error("Error deleting some attachments:", error);
+            }
+          }
+
+          deleteAllAttachments();
+
+          await Messages.deleteMany({
+            $or: [
+              {
+                from: userID,
+                to: toID,
+                deletedBy: { $all: [userID, toID] },
+              },
+              { to: userID, from: toID, deletedBy: { $all: [userID, toID] } },
+            ],
+          });
+
+          ws.send(
+            JSON.stringify({
+              message: "Messages deleted!",
+              event: "deleteMessage",
+            })
+          );
           return;
         }
 
@@ -477,10 +712,12 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
               {
                 from: userID,
                 to: id,
+                deletedBy: { $nin: userID },
               },
               {
                 from: id,
                 to: userID,
+                deletedBy: { $nin: userID },
               },
             ],
           }).sort({ createdAt: 1 });

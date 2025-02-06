@@ -31,6 +31,7 @@ interface socketTypes {
   acceptFriendRequest: (id: string) => void;
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
   setCurrentChat: React.Dispatch<React.SetStateAction<any>>;
+  deleteMessages: (id: string[] | undefined, toID: string) => void;
 
   setIsChatting: React.Dispatch<React.SetStateAction<boolean>>;
   isChatting: boolean;
@@ -55,7 +56,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast: stoast } = useToast();
 
   useEffect(() => {
-    if (currentChat) {
+    if (currentChat && "chatInfo" in currentChat) {
       currentChatRef.current = currentChat.chatInfo._id;
     }
   }, [currentChat]);
@@ -78,7 +79,6 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log(data);
 
         if (data.event === "searchFriend" && data.searchResult) {
           setSearchResult(data.searchResult);
@@ -133,10 +133,34 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
 
+        if (data.event === "deleteMessage") {
+          if (
+            data.message === "Messages deleted!" &&
+            data.deletedMessages &&
+            data.deletedMessages.length > 0
+          ) {
+            setCurrentChat((prev: any) => ({
+              ...prev,
+              chatHistory: prev.chatHistory.filter(
+                (p: any) => !data.deletedMessages.includes(p._id)
+              ),
+            }));
+
+            toast.success(data.message);
+            return;
+          }
+
+          if (data.message === "Messages deleted!") {
+            setCurrentChat((prev: any) => ({ ...prev, chatHistory: [] }));
+            return;
+          }
+        }
         if (data.event === "getHistory") {
-          if ("currentChatInfo" in data) setCurrentChat(data.currentChatInfo);
-          setCurrentChat(data.currentChatInfo);
-          setIsChatting(true);
+          if ("currentChatInfo" in data) {
+            setCurrentChat(data.currentChatInfo);
+            setIsChatting(true);
+            return;
+          }
         }
 
         if (data.event === "receiveMessage" && data.message) {
@@ -270,6 +294,16 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       socket.send(JSON.stringify({ event: "getHistory", id }));
   };
 
+  const deleteMessages = (id: string[] | undefined, toID: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      if (id && id.length > 0) {
+        socket.send(JSON.stringify({ ids: id, event: "deleteMessage", toID }));
+        return;
+      }
+      socket.send(JSON.stringify({ event: "deleteMessage", toID }));
+    }
+  };
+
   return (
     <WebSocketContext.Provider
       value={{
@@ -291,6 +325,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         setIsChatting,
         isChatting,
         setCurrentChat,
+        deleteMessages,
       }}
     >
       {children}

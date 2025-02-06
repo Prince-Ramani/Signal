@@ -32,11 +32,15 @@ const DisplaySearch = memo(
       <div
         className={` flex  items-center p-2 border-b md:hover:bg-white/20 cursor-pointer`}
       >
-        <a href={result.profilePicture} target="_blank">
+        <a
+          href={result.profilePicture}
+          target="_blank"
+          className="h-[48px] w-[48px] shrink-0"
+        >
           <img
             src={result.profilePicture}
             alt="Profile picture"
-            className="size-12 rounded-full object-cover"
+            className="h-full w-full shrink-0 rounded-full object-cover "
           />
         </a>
         <div className="flex flex-col gap-0.5 pl-3  w-full">
