@@ -38,8 +38,6 @@ const deleteImage = async (imageId: string) => {
   const imgID = imageId.split("/").slice(-1)[0].split(".")[0];
   const ID = `${IMAGE_FOLDER}/${imgID}`;
 
-  console.log(ID);
-
   return cloudinary.uploader.destroy(ID, { resource_type: "image" });
 };
 
@@ -238,6 +236,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             attachedImages: uploadedImages,
             attachedVideo: uploadedVideo,
             attachedDocuments: uploadedDocs,
+            isReaded: [userID],
           });
 
           const savedMessage = await newMessage.save();
@@ -386,8 +385,6 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
               ];
 
               const results = await Promise.all(allPromises);
-
-              console.log("All deletions completed:", results);
             } catch (error) {
               console.error("Error deleting some attachments:", error);
             }
@@ -672,12 +669,92 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             })
             .lean();
 
+          const newMess = await Promise.all(
+            totalFriends[0].friends.map(async (friend) => {
+              const totalMess = await Messages.find({
+                $or: [
+                  {
+                    from: friend._id,
+                    to: userID,
+                  },
+                  {
+                    from: userID,
+                    to: friend._id,
+                  },
+                ],
+              })
+                .sort({ createdAt: 1 })
+                .lean();
+
+              let lastMessageType = "Text";
+
+              const ls = totalMess[totalMess.length - 1];
+
+              if (
+                ls &&
+                ls.attachedDocuments &&
+                ls.attachedDocuments.length > 0
+              ) {
+                lastMessageType = "Document";
+              }
+
+              if (ls && ls.attachedImages && ls.attachedImages.length > 0) {
+                lastMessageType = "Image";
+              }
+
+              if (ls && ls.attachedVideo) {
+                lastMessageType = "Video";
+              }
+
+              let wasFromMe = false;
+
+              if (ls && ls.from.toString() === userID) {
+                wasFromMe = true;
+              }
+
+              let isSeen = true;
+
+              if (ls) isSeen = ls.isReaded.some((u) => u.toString() === userID);
+
+              let totalNewMessages = 0;
+
+              if (ls)
+                totalMess.forEach((u) => {
+                  const isReaded = u.isReaded.some(
+                    (u) => u.toString() === userID
+                  );
+
+                  if (!isReaded) totalNewMessages++;
+                });
+
+              if (totalMess.length > 0)
+                return {
+                  ...friend,
+                  totalNewMessages,
+                  lastMessage: ls.message,
+                  lastMessageType,
+                  wasFromMe,
+                  isSeen,
+                };
+
+              return { ...friend };
+            })
+          );
+
           ws.send(
             JSON.stringify({
-              friends: totalFriends[0].friends,
+              friends: newMess,
               event,
             })
           );
+          return;
+        }
+
+        if (ev && ev.event === "seen") {
+          const { id } = ev;
+          if (!id || !isValidObjectId(id)) return;
+
+          await Messages.findByIdAndUpdate(id, { $push: { isReaded: userID } });
           return;
         }
 
@@ -721,6 +798,24 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
               },
             ],
           }).sort({ createdAt: 1 });
+
+          await Messages.updateMany(
+            {
+              $or: [
+                {
+                  from: userID,
+                  to: id,
+                  isReaded: { $nin: userID },
+                },
+                {
+                  from: id,
+                  to: userID,
+                  isReaded: { $nin: userID },
+                },
+              ],
+            },
+            { $push: { isReaded: userID } }
+          );
 
           const chatInfo = {
             username: friendToChat.username,

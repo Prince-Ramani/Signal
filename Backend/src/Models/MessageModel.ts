@@ -29,6 +29,11 @@ const MessageSchema = new mongoose.Schema(
       required: false,
       deault: "",
     },
+    isReaded: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
 
     attachedVideo: {
       required: false,

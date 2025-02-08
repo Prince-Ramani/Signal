@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Search, XIcon } from "lucide-react";
 import { useWebsocket } from "@/Context/Websocket";
+import DisplayFriend from "./DisplayFriends";
 
 const Home = memo(() => {
   const [search, setSearch] = useState("");
@@ -108,30 +109,9 @@ const Home = memo(() => {
           </div>
           {search.length === 0 ? (
             <div className="py-4 cursor-pointer ">
-              {totalFriends.map((f, index) => {
-                return (
-                  <div
-                    key={index}
-                    className="flex gap-2 pl-2 hover:bg-border     items-center"
-                    onClick={() => getHistory(f._id)}
-                  >
-                    <img
-                      className="size-14 shrink-0 object-cover select-none pointer-events-none bg-white rounded-full  "
-                      src={f.profilePicture}
-                    />
-                    <div className="w-full h-20  border-t flex flex-col  justify-center   ">
-                      <div className="font-bold tracking-wide  ">
-                        {f.username}
-                      </div>
-                      {/* <div className="text-sm text-gray-400  tracking-wider">
-                        {f.lastMessage.length > 30
-                          ? f.lastMessage.slice(0, 30) + "...."
-                          : f.lastMessage}
-                      </div> */}
-                    </div>
-                  </div>
-                );
-              })}
+              {totalFriends.map((f, index) => (
+                <DisplayFriend key={index} friend={f} getHistory={getHistory} />
+              ))}
             </div>
           ) : (
             <div className="py-4 cursor-pointer ">

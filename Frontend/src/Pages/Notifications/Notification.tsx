@@ -15,9 +15,6 @@ const Notifications = memo(() => {
     getNotifications();
   }, []);
 
-  useEffect(() => {
-    console.log(totalNotifications);
-  }, [totalNotifications]);
   return (
     <div className=" w-full    flex flex-col md:border-l md:border-r h-full bg-background   ">
       <div>

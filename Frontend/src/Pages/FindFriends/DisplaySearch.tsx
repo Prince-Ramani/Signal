@@ -60,7 +60,7 @@ const DisplaySearch = memo(
           <>
             {pendingRequest ? (
               <div className="ml-auto">
-                <button className="bg-gray-600  rounded-md p-1 sm:p-2 px-3 active:bg-green-500 transition-colors">
+                <button className="bg-gray-600  rounded-md p-1 text-sm sm:p-2    active:bg-green-500 transition-colors">
                   Requested
                 </button>
               </div>

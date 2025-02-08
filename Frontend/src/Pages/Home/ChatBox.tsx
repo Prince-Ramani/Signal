@@ -315,7 +315,7 @@ const ChatBox = memo(() => {
                 : ""
             } z-20`}
           >
-            {currentChat.chatHistory(
+            {currentChat.chatHistory.map(
               (his: {
                 _id: string;
                 from: string;

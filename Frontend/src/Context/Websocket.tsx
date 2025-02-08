@@ -34,6 +34,7 @@ interface socketTypes {
   deleteMessages: (id: string[] | undefined, toID: string) => void;
 
   setIsChatting: React.Dispatch<React.SetStateAction<boolean>>;
+  currentChatRef: any;
   isChatting: boolean;
 
   searchResult: any[];
@@ -163,13 +164,17 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
 
-        if (data.event === "receiveMessage" && data.message) {
+        if (
+          data.event === "receiveMessage" &&
+          data.message &&
+          currentChatRef.current !== null
+        ) {
           const mess = data.message;
 
           const cc = currentChatRef.current;
           const from = mess.from;
 
-          if (cc && from && cc === from) {
+          if (cc && from && cc === from && "chatHistory" in currentChat) {
             const chat = {
               ...mess,
             };
@@ -180,6 +185,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
                 chatHistory: [...prevChat?.chatHistory, chat],
               };
             });
+            newSocket.send(JSON.stringify({ event: "seen", id: chat._id }));
             return;
           }
 
