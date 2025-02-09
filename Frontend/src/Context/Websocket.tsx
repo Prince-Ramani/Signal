@@ -26,6 +26,7 @@ interface socketTypes {
   currentChat: any;
 
   totalFriends: any[];
+  setTotalFriends: any;
 
   isSignedIn: boolean;
   acceptFriendRequest: (id: string) => void;
@@ -49,7 +50,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [totalNotifications, setTotalNotifcations] = useState<any[]>([]);
   const [totalFriends, setTotalFriends] = useState<any[]>([]);
-  const [currentChat, setCurrentChat] = useState<any>();
+  const [currentChat, setCurrentChat] = useState<any>("");
   const currentChatRef = useRef<any>(null);
   const [isChatting, setIsChatting] = useState(false);
 
@@ -164,17 +165,47 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
 
-        if (
-          data.event === "receiveMessage" &&
-          data.message &&
-          currentChatRef.current !== null
-        ) {
+        if (data.event === "seen" && "message" in data) {
+          const mess = data.message;
+
+          const id = data.id;
+
+          const cc = currentChatRef.current;
+          const from = mess.from;
+          const to = mess.to;
+
+          if (cc && id && cc === id && mess === "All messages seen!") {
+            setCurrentChat((p: any) => {
+              const update = p.chatHistory.map((message: any) => {
+                return { ...message, status: "Seen" };
+              });
+
+              return { ...p, chatHistory: update };
+            });
+
+            return;
+          }
+
+          if (cc && from && (cc === from || cc === to)) {
+            setCurrentChat((prevChat: any) => {
+              const update = prevChat.chatHistory.map((message: any) => {
+                if (message._id === mess._id) return mess;
+                return message;
+              });
+              return { ...prevChat, chatHistory: update };
+            });
+          }
+
+          return;
+        }
+
+        if (data.event === "receiveMessage" && data.message) {
           const mess = data.message;
 
           const cc = currentChatRef.current;
           const from = mess.from;
 
-          if (cc && from && cc === from && "chatHistory" in currentChat) {
+          if (cc && from && cc === from) {
             const chat = {
               ...mess,
             };
@@ -188,6 +219,32 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
             newSocket.send(JSON.stringify({ event: "seen", id: chat._id }));
             return;
           }
+
+          setTotalFriends((prev: any) => {
+            const data = prev.map((friend: any) => {
+              if (friend._id === mess.from) {
+                const lastMessageType =
+                  mess.attachedDocuments.length > 0
+                    ? "Document"
+                    : mess.attachedImages.length > 0
+                    ? "Image"
+                    : mess.attachedVideo
+                    ? "Video"
+                    : "Text";
+
+                return {
+                  ...friend,
+                  lastMessage: mess.message,
+                  totalNewMessages: friend.totalNewMessages + 1,
+                  wasFromMe: false,
+                  lastMessageType,
+                  status: mess.status,
+                };
+              }
+              return friend;
+            });
+            return data;
+          });
 
           stoast({ title: `New message` });
         }
@@ -332,6 +389,8 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         isChatting,
         setCurrentChat,
         deleteMessages,
+        setTotalFriends,
+        currentChatRef,
       }}
     >
       {children}

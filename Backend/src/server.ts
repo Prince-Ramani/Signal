@@ -87,6 +87,8 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             isReply,
           }: sendMessageInterface = ev;
 
+          const isOnline = usersMap.get(to);
+
           if (!from || !to || !message || !messageType) {
             ws.send(
               JSON.stringify({
@@ -236,12 +238,10 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             attachedImages: uploadedImages,
             attachedVideo: uploadedVideo,
             attachedDocuments: uploadedDocs,
-            isReaded: [userID],
+            status: isOnline ? "Sent" : "Pending",
           });
 
           const savedMessage = await newMessage.save();
-
-          const isOnline = usersMap.get(to);
 
           if (isOnline && isOnline.readyState === WebSocket.OPEN) {
             isOnline.send(
@@ -676,10 +676,12 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
                   {
                     from: friend._id,
                     to: userID,
+                    deletedBy: { $nin: [userID] },
                   },
                   {
                     from: userID,
                     to: friend._id,
+                    deletedBy: { $nin: [userID] },
                   },
                 ],
               })
@@ -706,26 +708,15 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
                 lastMessageType = "Video";
               }
 
-              let wasFromMe = false;
-
-              if (ls && ls.from.toString() === userID) {
-                wasFromMe = true;
-              }
-
-              let isSeen = true;
-
-              if (ls) isSeen = ls.isReaded.some((u) => u.toString() === userID);
-
               let totalNewMessages = 0;
 
               if (ls)
                 totalMess.forEach((u) => {
-                  const isReaded = u.isReaded.some(
-                    (u) => u.toString() === userID
-                  );
-
-                  if (!isReaded) totalNewMessages++;
+                  u.status !== "Seen" ? totalNewMessages++ : "";
                 });
+
+              const wasFromMe =
+                ls && ls.from ? ls.from.toString() === userID : false;
 
               if (totalMess.length > 0)
                 return {
@@ -733,12 +724,17 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
                   totalNewMessages,
                   lastMessage: ls.message,
                   lastMessageType,
+                  status: ls.status,
                   wasFromMe,
-                  isSeen,
                 };
 
               return { ...friend };
             })
+          );
+
+          await Messages.updateMany(
+            { to: userID, status: "Pending" },
+            { status: "Sent" }
           );
 
           ws.send(
@@ -751,10 +747,29 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
         }
 
         if (ev && ev.event === "seen") {
-          const { id } = ev;
+          const { id, event } = ev;
           if (!id || !isValidObjectId(id)) return;
 
-          await Messages.findByIdAndUpdate(id, { $push: { isReaded: userID } });
+          const updatedDoc = await Messages.findByIdAndUpdate(
+            id,
+            { status: "Seen" },
+            { new: true }
+          );
+
+          if (updatedDoc) {
+            const isOnline = usersMap.get(updatedDoc.from.toString());
+
+            if (isOnline && isOnline.readyState === WebSocket.OPEN) {
+              isOnline.send(
+                JSON.stringify({
+                  event: "seen",
+                  message: updatedDoc,
+                })
+              );
+              return;
+            }
+          }
+
           return;
         }
 
@@ -801,20 +816,12 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
 
           await Messages.updateMany(
             {
-              $or: [
-                {
-                  from: userID,
-                  to: id,
-                  isReaded: { $nin: userID },
-                },
-                {
-                  from: id,
-                  to: userID,
-                  isReaded: { $nin: userID },
-                },
-              ],
+              from: id,
+              to: userID,
+              status: { $in: ["Sent", "Pending"] },
             },
-            { $push: { isReaded: userID } }
+            { status: "Seen" },
+            { new: true }
           );
 
           const chatInfo = {
@@ -824,6 +831,17 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             _id: friendToChat._id,
           };
 
+          const isOnline = usersMap.get(id);
+
+          if (isOnline && isOnline.readyState === WebSocket.OPEN) {
+            isOnline.send(
+              JSON.stringify({
+                message: "All messages seen!",
+                id,
+                event: "seen",
+              })
+            );
+          }
           ws.send(
             JSON.stringify({
               currentChatInfo: { chatHistory, chatInfo },
@@ -848,6 +866,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
     }
 
     ws.on("close", (code, reason) => {
+      usersMap.delete(userID);
       console.log(
         "WebSocket connection closed with code : ",
         code,

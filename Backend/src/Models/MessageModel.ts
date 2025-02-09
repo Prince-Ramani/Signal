@@ -29,10 +29,10 @@ const MessageSchema = new mongoose.Schema(
       required: false,
       deault: "",
     },
-    isReaded: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "User",
-      default: [],
+    status: {
+      type: String,
+      enum: ["Sent", "Seen", "Pending"],
+      default: "Pending",
     },
 
     attachedVideo: {

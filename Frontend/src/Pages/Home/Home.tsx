@@ -7,7 +7,8 @@ const Home = memo(() => {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  const { getFriends, totalFriends, getHistory } = useWebsocket();
+  const { getFriends, totalFriends, getHistory, setTotalFriends } =
+    useWebsocket();
   const [searchedFriend, setSearchedFriend] = useState<any[]>([]);
   const [currentlyOn, setCurrenylOn] = useState<
     "All" | "Unread" | "Groups" | "Favourites"
@@ -110,7 +111,12 @@ const Home = memo(() => {
           {search.length === 0 ? (
             <div className="py-4 cursor-pointer ">
               {totalFriends.map((f, index) => (
-                <DisplayFriend key={index} friend={f} getHistory={getHistory} />
+                <DisplayFriend
+                  key={index}
+                  friend={f}
+                  getHistory={getHistory}
+                  setTotalFriends={setTotalFriends}
+                />
               ))}
             </div>
           ) : (

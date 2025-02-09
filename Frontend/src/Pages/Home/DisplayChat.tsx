@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from "react";
 import { FormateDate } from "@/components/Date";
-import { Download, File } from "lucide-react";
+import { Check, CheckCheck, Download, File } from "lucide-react";
 
 interface chatInterface {
   _id: string;
@@ -14,6 +14,7 @@ interface chatInterface {
   attachedImages?: string[];
   attachedVideo?: string;
   attachedDocuments?: { name: string; doc: string }[];
+  status: "Pending" | "Seen" | "Sent";
 }
 
 const DisplayChat = memo(
@@ -55,7 +56,7 @@ const DisplayChat = memo(
         }}
       >
         <div
-          className={`bg-blue-600 text-lg gap-0.5   max-w-[90%] sm:max-w-prose min-w-20 md:min-w-40 flex flex-col   tracking-wide p-2 w-fit rounded-md  ${
+          className={` text-lg gap-0.5  bg-gray-800  max-w-[90%] sm:max-w-prose min-w-20 md:min-w-40 flex flex-col   tracking-wide p-2 w-fit rounded-md  ${
             authUserID === chat.from
               ? "rounded-tr-none rounded-br-2xl  ml-auto"
               : " rounded-tl-none rounded-bl-2xl  mr-auto"
@@ -137,8 +138,18 @@ const DisplayChat = memo(
               chat.message
             )}
           </div>
-          <div className="text-xs sm:text-sm tracking-tight self-end text-gray-300 pb-1 ">
+          <div className="text-xs sm:text-sm tracking-tight self-end flex gap-2 items-center text-gray-300 pb-1 ">
             {FormateDate(chat.createdAt)}
+
+            {chat.from !== authUserID ? (
+              <CheckCheck className="text-blue-500 size-5" />
+            ) : chat.status === "Pending" ? (
+              <Check className="size-5" />
+            ) : chat.status === "Sent" ? (
+              <CheckCheck className="size-5" />
+            ) : (
+              <CheckCheck className="text-blue-500 size-5" />
+            )}
           </div>
         </div>
       </div>

@@ -35,6 +35,7 @@ const ChatBox = memo(() => {
     deleteMessages,
     setIsChatting,
     setCurrentChat,
+    currentChatRef,
   } = useWebsocket();
   const { authUser } = useAuthUser();
   const [message, setMessage] = useState("");
@@ -221,9 +222,12 @@ const ChatBox = memo(() => {
   };
 
   // useEffect(() => {
+
   //   return () => {
+
   //     setCurrentChat(undefined);
   //     setIsChatting(false);
+  //     currentChatRef.current = "";
   //   };
   // }, []);
 
@@ -243,6 +247,8 @@ const ChatBox = memo(() => {
               <button
                 onClick={() => {
                   setCurrentChat(undefined);
+                  currentChatRef.current = "";
+
                   setIsChatting(false);
                 }}
                 disabled={isPending}
