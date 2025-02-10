@@ -850,6 +850,99 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
           );
           return;
         }
+
+        if (ev && ev.event === "addToFavourites") {
+          const { id, event } = ev;
+
+          if (!id || !isValidObjectId(id)) {
+            ws.send(
+              JSON.stringify({
+                error: "Id required to add to favourite!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          const userToAdd = await User.findById(id);
+
+          if (!userToAdd) {
+            ws.send(
+              JSON.stringify({
+                error: "NO such user found!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          const me = await User.findById(userID);
+
+          if (!me) {
+            ws.send(
+              JSON.stringify({
+                error: "Unauthorized!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          const isAlreadyInFavourites = me.favourites.some(
+            (i) => i.toString() === id
+          );
+
+          if (isAlreadyInFavourites) {
+            ws.send(
+              JSON.stringify({
+                message: `${userToAdd.username} is already in your favourites`,
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          me.favourites.push(userToAdd._id);
+          await me.save();
+          ws.send(JSON.stringify({ message: userToAdd, event }));
+          return;
+        }
+
+        if (ev && ev.event === "removeFromFavourites") {
+          const { id, event } = ev;
+
+          if (!id || !isValidObjectId(id)) {
+            ws.send(
+              JSON.stringify({
+                error: "Id required to remove from favourite!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          await User.findByIdAndUpdate(userID, {
+            $pull: { favourites: id },
+          });
+
+          ws.send(JSON.stringify({ message: id, event }));
+          return;
+        }
+
+        if (ev && ev.event === "getFavourites") {
+          const { event } = ev;
+          const favourites = await User.findById(userID)
+            .select("favourites")
+            .populate({
+              path: "favourites",
+              select: "username _id profilePicture bio",
+            });
+
+          ws.send(
+            JSON.stringify({ favourites: favourites?.favourites || [], event })
+          );
+          return;
+        }
       } catch (err) {
         console.log(err);
         ws.send(

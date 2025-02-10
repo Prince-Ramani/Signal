@@ -27,9 +27,15 @@ interface socketTypes {
 
   totalFriends: any[];
   setTotalFriends: any;
+  getFavourites: () => void;
 
   isSignedIn: boolean;
   acceptFriendRequest: (id: string) => void;
+  addToFavourites: (id: string) => void;
+
+  removeFromFavourites: (id: string) => void;
+  favourites: any[];
+
   setIsSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
   setCurrentChat: React.Dispatch<React.SetStateAction<any>>;
   deleteMessages: (id: string[] | undefined, toID: string) => void;
@@ -37,6 +43,7 @@ interface socketTypes {
   setIsChatting: React.Dispatch<React.SetStateAction<boolean>>;
   currentChatRef: any;
   isChatting: boolean;
+  favouritesRef: any;
 
   searchResult: any[];
   removeFriend: (id: string) => void;
@@ -52,7 +59,10 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [totalFriends, setTotalFriends] = useState<any[]>([]);
   const [currentChat, setCurrentChat] = useState<any>("");
   const currentChatRef = useRef<any>(null);
+  const favouritesRef = useRef<string[]>([]);
+
   const [isChatting, setIsChatting] = useState(false);
+  const [favourites, setFavourites] = useState<any[]>([]);
 
   const { authUser } = useAuthUser();
   const { toast: stoast } = useToast();
@@ -62,6 +72,15 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       currentChatRef.current = currentChat.chatInfo._id;
     }
   }, [currentChat]);
+
+  useEffect(() => {
+    if (favourites && favourites.length > 0) {
+      const all = favourites.map((f: { _id: string }) => {
+        return f._id;
+      });
+      favouritesRef.current = all;
+    }
+  }, [favourites]);
 
   useEffect(() => {
     if (isSignedIn && !socket) {
@@ -165,6 +184,43 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
 
+        if (data.event === "addToFavourites") {
+          if ("message" in data) {
+            const isAlreadyInFavourites = favourites.some(
+              (i) => i._id.toString() === data.message._id
+            );
+            if (data.message._id && !isAlreadyInFavourites) {
+              setFavourites((prev: any) => [...prev, data.message]);
+              toast.success(`${data.message.username} added to favourites!`);
+              return;
+            }
+            return;
+          }
+        }
+
+        if (data.event === "removeFromFavourites") {
+          if ("message" in data) {
+            setFavourites((prev: any) =>
+              prev.filter((i: any) => i._id !== data.message)
+            );
+            toast.success("Removed");
+            return;
+          }
+        }
+
+        if (data.event === "removeFromFavourites") {
+          if ("message" in data) {
+            if (data.message._id) {
+              setFavourites((prev: any) =>
+                prev.filter((i: any) => i._id !== data.message._id)
+              );
+              toast.success(`Removed from favourites!`);
+              return;
+            }
+            return;
+          }
+        }
+
         if (data.event === "seen" && "message" in data) {
           const mess = data.message;
 
@@ -235,7 +291,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
                 return {
                   ...friend,
                   lastMessage: mess.message,
-                  totalNewMessages: friend.totalNewMessages + 1,
+                  totalNewMessages: friend.totalNewMessages + 1 || 1,
                   wasFromMe: false,
                   lastMessageType,
                   status: mess.status,
@@ -247,6 +303,10 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
           });
 
           stoast({ title: `New message` });
+        }
+
+        if (data.event === "getFavourites" && data.favourites) {
+          setFavourites(data.favourites);
         }
 
         if (data.event === "sendMessage" && data.message) {
@@ -367,12 +427,32 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const addToFavourites = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ id, event: "addToFavourites" }));
+    }
+  };
+
+  const removeFromFavourites = (id: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ id, event: "removeFromFavourites" }));
+    }
+  };
+
+  const getFavourites = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ event: "getFavourites" }));
+    }
+  };
+
   return (
     <WebSocketContext.Provider
       value={{
         socket,
         sendPersonalMessage,
+        getFavourites,
         setIsSignedIn,
+        favourites,
         isSignedIn,
         sendFriendRequest,
         searchFriend,
@@ -387,9 +467,12 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         currentChat,
         setIsChatting,
         isChatting,
+        addToFavourites,
+        removeFromFavourites,
         setCurrentChat,
         deleteMessages,
         setTotalFriends,
+        favouritesRef,
         currentChatRef,
       }}
     >

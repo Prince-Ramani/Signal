@@ -36,6 +36,9 @@ const ChatBox = memo(() => {
     setIsChatting,
     setCurrentChat,
     currentChatRef,
+    addToFavourites,
+    removeFromFavourites,
+    favouritesRef,
   } = useWebsocket();
   const { authUser } = useAuthUser();
   const [message, setMessage] = useState("");
@@ -298,7 +301,7 @@ const ChatBox = memo(() => {
                   </PopoverTrigger>
                   <PopoverContent className="w-fit p-0 border-none relative right-14 ">
                     <div
-                      className="border md:hover:bg- white/10 w-full h-full select-none p-2 px-4 text-lg cursor-pointer active:bg-red-500 transition-colors"
+                      className="border md:hover:bg- white/10 w-full text-center h-full select-none p-2 px-4 text-lg cursor-pointer active:bg-red-500 transition-colors"
                       onClick={() => handleDelete()}
                     >
                       Clear chat
@@ -309,6 +312,27 @@ const ChatBox = memo(() => {
                     >
                       Select
                     </div>
+                    {favouritesRef.current.includes(
+                      currentChat.chatInfo._id
+                    ) ? (
+                      <div
+                        className="border md:hover:bg- white/10 w-full h-full text-center select-none p-2 px-4 text-lg cursor-pointer active:bg-green-500 transition-colors"
+                        onClick={() => {
+                          removeFromFavourites(currentChat.chatInfo._id);
+                        }}
+                      >
+                        Remove from favourites
+                      </div>
+                    ) : (
+                      <div
+                        className="border md:hover:bg- white/10 w-full h-full text-center select-none p-2 px-4 text-lg cursor-pointer active:bg-green-500 transition-colors"
+                        onClick={() => {
+                          addToFavourites(currentChat.chatInfo._id);
+                        }}
+                      >
+                        Add to favourites
+                      </div>
+                    )}
                   </PopoverContent>
                 </Popover>
               </div>
@@ -330,6 +354,7 @@ const ChatBox = memo(() => {
                 updatedAt: string;
                 message: string;
                 messageType: "Group" | "Personal";
+                status: "Pending" | "Seen" | "Sent";
                 isReply?: string;
                 attachedImages?: string[];
                 attachedVideo?: string;

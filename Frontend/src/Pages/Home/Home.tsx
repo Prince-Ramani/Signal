@@ -7,8 +7,14 @@ const Home = memo(() => {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  const { getFriends, totalFriends, getHistory, setTotalFriends } =
-    useWebsocket();
+  const {
+    getFriends,
+    totalFriends,
+    getHistory,
+    setTotalFriends,
+    getFavourites,
+    favourites,
+  } = useWebsocket();
   const [searchedFriend, setSearchedFriend] = useState<any[]>([]);
   const [currentlyOn, setCurrenylOn] = useState<
     "All" | "Unread" | "Groups" | "Favourites"
@@ -31,6 +37,7 @@ const Home = memo(() => {
 
   useEffect(() => {
     getFriends();
+    getFavourites();
   }, []);
 
   useEffect(() => {
@@ -108,7 +115,7 @@ const Home = memo(() => {
               );
             })}
           </div>
-          {search.length === 0 ? (
+          {currentlyOn === "All" ? (
             <div className="py-4 cursor-pointer ">
               {totalFriends.map((f, index) => (
                 <DisplayFriend
@@ -120,43 +127,68 @@ const Home = memo(() => {
               ))}
             </div>
           ) : (
+            ""
+          )}
+
+          {currentlyOn === "Unread" ? (
             <div className="py-4 cursor-pointer ">
-              {searchedFriend.map((f, index) => {
-                return (
-                  <div
+              {totalFriends.map((f, index) =>
+                (f.lastMessage.trim().length > 0 ||
+                  f.totalNewMessages.length > 0) &&
+                !f.wasFromMe &&
+                f.status !== "Seen" ? (
+                  <DisplayFriend
                     key={index}
-                    className="flex gap-2 pl-2 hover:bg-border     items-center"
-                  >
-                    <img
-                      className="size-14 shrink-0 object-cover select-none pointer-events-none bg-white rounded-full  "
-                      src={f.profilePicture}
-                    />
-                    <div className="w-full h-20  border-t flex flex-col  justify-center   ">
-                      <div className="font-bold tracking-wide">
-                        {f.username.toLowerCase().split("")(
-                          (s: string, index: number) =>
-                            search.toLocaleLowerCase().includes(s) ? (
-                              <span
-                                className="font-extrabold text-green-400"
-                                key={index}
-                              >
-                                {s}
-                              </span>
-                            ) : (
-                              s
-                            )
-                        )}
-                      </div>
-                      {/* <div className="text-sm text-gray-400  tracking-wider">
-                      {f.lastMessage.length > 30
-                        ? f.lastMessage.slice(0, 30) + "...."
-                        : f.lastMessage}
-                    </div> */}
-                    </div>
-                  </div>
+                    friend={f}
+                    getHistory={getHistory}
+                    setTotalFriends={setTotalFriends}
+                  />
+                ) : (
+                  ""
+                )
+              )}
+            </div>
+          ) : (
+            ""
+          )}
+
+          {currentlyOn === "Groups" ? (
+            <div className="py-4 cursor-pointer ">
+              {totalFriends.map((f, index) =>
+                f.lastMessage || f.totalNewMessages.length > 0 ? (
+                  <DisplayFriend
+                    key={index}
+                    friend={f}
+                    getHistory={getHistory}
+                    setTotalFriends={setTotalFriends}
+                  />
+                ) : (
+                  ""
+                )
+              )}
+            </div>
+          ) : (
+            ""
+          )}
+          {currentlyOn === "Favourites" ? (
+            <div className="py-4 cursor-pointer ">
+              {totalFriends.map((f, index) => {
+                const isInFavourites = favourites.some((i) => i._id === f._id);
+
+                return isInFavourites ? (
+                  <DisplayFriend
+                    key={index}
+                    friend={f}
+                    getHistory={getHistory}
+                    setTotalFriends={setTotalFriends}
+                  />
+                ) : (
+                  ""
                 );
               })}
             </div>
+          ) : (
+            ""
           )}
         </div>
       </div>

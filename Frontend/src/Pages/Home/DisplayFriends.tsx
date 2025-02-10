@@ -24,7 +24,6 @@ const DisplayFriend = memo(
     setTotalFriends: any;
   }) => {
     if (!friend) return;
-
     return (
       <div
         className="flex gap-2 pl-2 hover:bg-border     items-center"
