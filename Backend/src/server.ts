@@ -837,7 +837,7 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             isOnline.send(
               JSON.stringify({
                 message: "All messages seen!",
-                id,
+                id: userID,
                 event: "seen",
               })
             );

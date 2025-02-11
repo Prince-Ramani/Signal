@@ -38,7 +38,8 @@ const ChatBox = memo(() => {
     currentChatRef,
     addToFavourites,
     removeFromFavourites,
-    favouritesRef,
+    setIsOnCall,
+    favourites,
   } = useWebsocket();
   const { authUser } = useAuthUser();
   const [message, setMessage] = useState("");
@@ -270,6 +271,21 @@ const ChatBox = memo(() => {
               </div>
             </div>
 
+            <div>
+              <div
+                className="flex items-center justify-center md:hover:bg-white/20 p-2 rounded-full cursor-pointer "
+                onClick={() => {
+                  setIsOnCall({
+                    _id: currentChat.chatInfo._id,
+                    profilePicture: currentChat.chatInfo.profilePicture,
+                    username: currentChat.chatInfo.username,
+                  });
+                }}
+              >
+                <Video className="size-6" />
+              </div>
+            </div>
+
             <div className="flex items-center md:gap-5 ">
               {isDeleteOn ? (
                 <>
@@ -312,8 +328,8 @@ const ChatBox = memo(() => {
                     >
                       Select
                     </div>
-                    {favouritesRef.current.includes(
-                      currentChat.chatInfo._id
+                    {favourites.some(
+                      (f) => f._id === currentChat.chatInfo._id
                     ) ? (
                       <div
                         className="border md:hover:bg- white/10 w-full h-full text-center select-none p-2 px-4 text-lg cursor-pointer active:bg-green-500 transition-colors"

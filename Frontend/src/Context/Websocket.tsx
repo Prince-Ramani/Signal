@@ -21,6 +21,7 @@ interface socketTypes {
   searchFriend: (id: string) => void;
   getNotifications: () => void;
   getFriends: () => void;
+  sendSignal: (message: any) => void;
 
   totalNotifications: any[];
   currentChat: any;
@@ -43,7 +44,19 @@ interface socketTypes {
   setIsChatting: React.Dispatch<React.SetStateAction<boolean>>;
   currentChatRef: any;
   isChatting: boolean;
-  favouritesRef: any;
+  isOnCall: {
+    username: string;
+    _id: string;
+    profilePicture: string;
+  } | null;
+
+  setIsOnCall: React.Dispatch<
+    React.SetStateAction<{
+      username: string;
+      _id: string;
+      profilePicture: string;
+    } | null>
+  >;
 
   searchResult: any[];
   removeFriend: (id: string) => void;
@@ -59,7 +72,11 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [totalFriends, setTotalFriends] = useState<any[]>([]);
   const [currentChat, setCurrentChat] = useState<any>("");
   const currentChatRef = useRef<any>(null);
-  const favouritesRef = useRef<string[]>([]);
+  const [isOnCall, setIsOnCall] = useState<{
+    username: string;
+    _id: string;
+    profilePicture: string;
+  } | null>(null);
 
   const [isChatting, setIsChatting] = useState(false);
   const [favourites, setFavourites] = useState<any[]>([]);
@@ -72,15 +89,6 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
       currentChatRef.current = currentChat.chatInfo._id;
     }
   }, [currentChat]);
-
-  useEffect(() => {
-    if (favourites && favourites.length > 0) {
-      const all = favourites.map((f: { _id: string }) => {
-        return f._id;
-      });
-      favouritesRef.current = all;
-    }
-  }, [favourites]);
 
   useEffect(() => {
     if (isSignedIn && !socket) {
@@ -445,13 +453,22 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const sendSignal = (message: any) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+    }
+  };
+
   return (
     <WebSocketContext.Provider
       value={{
         socket,
+        isOnCall,
+        setIsOnCall,
         sendPersonalMessage,
         getFavourites,
         setIsSignedIn,
+        sendSignal,
         favourites,
         isSignedIn,
         sendFriendRequest,
@@ -472,7 +489,6 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
         setCurrentChat,
         deleteMessages,
         setTotalFriends,
-        favouritesRef,
         currentChatRef,
       }}
     >
