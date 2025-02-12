@@ -1,23 +1,31 @@
+import { useAuthUser } from "@/Context/authUserContext";
 import { useWebsocket } from "@/Context/Websocket";
-import { memo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { memo, useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 const VideoCall = memo(() => {
-  const { isOnCall, setIsOnCall, socket, sendSignal } = useWebsocket();
+  const { isOnCall, setIsOnCall, sendSignal } = useWebsocket();
 
   const localVideoRef = useRef<any>(null);
   const remoteVideoRef = useRef<any>(null);
   const [peerConnection, setPeerConnection] =
-    useState<RTCPeerConnection | null>();
+    useState<RTCPeerConnection | null>(null);
   const [isCallInProgress, setCallIsInProgress] = useState(false);
+  const { authUser } = useAuthUser();
 
-  if (!socket) return;
+  if (!authUser) return;
 
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.event === "VideoCall") {
-      handleCall(data);
-    }
-  };
+  const iceConfiguration: any = {};
+  iceConfiguration.iceServers = [
+    {
+      urls: "stun:stun1.l.google.com:19302",
+    },
+    {
+      urls: "stun:stun3.l.google.com:19302",
+    },
+    {
+      urls: "stun:stun4.l.google.com:19302",
+    },
+  ];
 
   const handleCall = (data: any) => {
     switch (data.type) {
@@ -36,12 +44,29 @@ const VideoCall = memo(() => {
   };
 
   const handleOffer = async (message: any) => {
-    const peer = new RTCPeerConnection();
-    await peer.setRemoteDescription(message.offer);
+    if (peerConnection) {
+      peerConnection.close();
+      setPeerConnection(null);
+    }
+
+    const peer = new RTCPeerConnection(iceConfiguration);
+    setPeerConnection(peer);
+    try {
+      await peer.setRemoteDescription(message.offer);
+    } catch (error) {
+      toast.error("Failed to set remote description.");
+      return;
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true,
     });
+
+    if (!stream) {
+      toast.error("Video src not available!");
+      return;
+    }
 
     localVideoRef.current.srcObject = stream;
 
@@ -49,31 +74,51 @@ const VideoCall = memo(() => {
 
     peer.onicecandidate = (e) => {
       if (e.candidate) {
-        sendSignal({ type: "iceCandidate", candidate: e.candidate });
+        sendSignal({
+          type: "iceCandidate",
+          candidate: e.candidate,
+          event: "call",
+          id: isOnCall?.id,
+          profilePicture: authUser.profilePicture,
+          username: authUser.username,
+        });
       }
     };
 
     peer.ontrack = (e) => {
-      remoteVideoRef.current.srcObject = e.streams[0];
+      remoteVideoRef.current!.srcObject = e.streams[0];
     };
 
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
 
-    sendSignal({ type: "answer", answer });
-
-    setPeerConnection(peer);
+    sendSignal({
+      type: "answer",
+      answer,
+      event: "call",
+      id: isOnCall?.id,
+      profilePicture: authUser.profilePicture,
+      username: authUser.username,
+    });
     setCallIsInProgress(true);
   };
 
   const handleAnswer = (message: any) => {
-    const peer = peerConnection;
-    peer?.setRemoteDescription(new RTCSessionDescription(message.answer));
+    console.log("Answer outside", peerConnection);
+    if (peerConnection) {
+      console.log("Answer got called!");
+      peerConnection.setRemoteDescription(
+        new RTCSessionDescription(message.answer)
+      );
+    }
   };
 
   const handleIceCandidate = (message: any) => {
-    const peer = peerConnection;
-    peer?.addIceCandidate(new RTCIceCandidate(message.iceCandidate));
+    console.log("Ice candiate outisde", peerConnection);
+    if (peerConnection) {
+      console.log("iceCandidate got called!");
+      peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+    }
   };
 
   const startCall = async () => {
@@ -84,49 +129,99 @@ const VideoCall = memo(() => {
 
     localVideoRef.current.srcObject = stream;
 
-    const peer = new RTCPeerConnection();
+    if (!stream) {
+      toast.error("Video src not available!");
+      return;
+    }
 
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    const peer = new RTCPeerConnection(iceConfiguration);
+    console.log("Peer created", peer);
+
+    stream.getTracks().forEach((track) => {
+      peer.addTrack(track, stream);
+    });
 
     peer.onicecandidate = (e) => {
       if (e.candidate) {
-        sendSignal({ type: "iceCandidate", candidate: e.candidate });
+        sendSignal({
+          type: "iceCandidate",
+          candidate: e.candidate,
+          event: "call",
+          id: isOnCall?.id,
+          profilePicture: authUser.profilePicture,
+          username: authUser.username,
+        });
       }
     };
 
     peer.ontrack = (e) => {
+      console.log("Snedin track", e.streams[0]);
       remoteVideoRef.current.srcObject = e.streams[0];
     };
 
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
 
-    sendSignal({ type: "offer", offer });
-
+    sendSignal({
+      type: "offer",
+      offer,
+      event: "call",
+      id: isOnCall?.id,
+      profilePicture: authUser.profilePicture,
+      username: authUser.username,
+    });
     setPeerConnection(peer);
+
     setCallIsInProgress(true);
   };
 
   const closeCall = () => {
-    peerConnection?.close();
-    setPeerConnection(null);
+    if (peerConnection) {
+      peerConnection.close();
+      setPeerConnection(null);
+    }
 
-    setCallIsInProgress(false);
+    if (localVideoRef.current && localVideoRef.current.srcObject) {
+      const stream = localVideoRef.current.srcObject;
+      stream.getTracks().forEach((track: any) => track.stop());
+    }
+
     setIsOnCall(null);
+    setCallIsInProgress(false);
   };
 
+  useEffect(() => {
+    if (isOnCall && isOnCall.event === "IncomingCall") {
+      handleCall(isOnCall);
+      return;
+    }
+    startCall();
+
+    return () => {
+      closeCall();
+    };
+  }, [isOnCall]);
+
   return (
-    <div className="bg-purple-800 w-full flex flex-col justify-center items-center select-none">
-      <div className="flex flex-col items-center gap-5">
-        <img
-          src={isOnCall?.profilePicture}
-          alt="peofilePicture"
-          className="size-32 rounded-full "
-        />
-        <div className="text-xl md:text-2xl xl:text-3xl font-semibold">
-          {isOnCall?.username}
+    <div className="bg-purple-800 w-full  max-h-screen flex flex-col justify-center items-center select-none">
+      <div className="w-full h-full relative">
+        <div className="h-32 w-24 border bg-white absolute bottom-10 right-5">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="h-full w-full object-cover  "
+          />
         </div>
-        <div>0:00</div>
+        <div className=" border bg-yellow-500 h-full w-full  ">
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="h-full w-full object-cover "
+          />
+        </div>
       </div>
     </div>
   );

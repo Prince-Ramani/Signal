@@ -20,7 +20,7 @@ import Connect from "./Pages/Connect";
 
 const App = () => {
   const { setAuthUser } = useAuthUser();
-  const { setIsSignedIn } = useWebsocket();
+  const { setIsSignedIn, socket } = useWebsocket();
   const [isSignedIn, setSs] = useState<boolean | null>(null);
 
   const { isPending } = useQuery({

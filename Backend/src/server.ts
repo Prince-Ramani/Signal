@@ -2,7 +2,6 @@ import ws, { WebSocketServer } from "ws";
 import * as cookie from "cookie";
 import { validateToken } from "./token";
 import Messages from "./Models/MessageModel";
-import { uploadImageToClodinary } from "./utils";
 import mongoose, { isValidObjectId } from "mongoose";
 import User from "./Models/UserModel";
 import { v2 as cloudinary } from "cloudinary";
@@ -72,6 +71,8 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
       try {
         const data = typeof message === "string" ? message : message.toString();
         const ev = JSON.parse(data);
+
+        console.log(ev);
 
         //sendmessage
 
@@ -942,6 +943,34 @@ export const setUpWebSocketServer = (wss: WebSocketServer) => {
             JSON.stringify({ favourites: favourites?.favourites || [], event })
           );
           return;
+        }
+
+        if (ev && ev.event === "call") {
+          const { id, event } = ev;
+
+          if (!id || !isValidObjectId(id)) {
+            ws.send(
+              JSON.stringify({
+                error: "Id required to video call!",
+                event: "getNotifications",
+              })
+            );
+            return;
+          }
+
+          const isOnline = usersMap.get(id);
+
+          if (isOnline && isOnline.readyState === WebSocket.OPEN) {
+            isOnline.send(
+              JSON.stringify({ ...ev, event: "IncomingCall", id: userID })
+            );
+            return;
+          } else {
+            ws.send(
+              JSON.stringify({ error: "User is offline!", event: "call" })
+            );
+            return;
+          }
         }
       } catch (err) {
         console.log(err);

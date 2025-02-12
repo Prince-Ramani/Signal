@@ -46,14 +46,15 @@ interface socketTypes {
   isChatting: boolean;
   isOnCall: {
     username: string;
-    _id: string;
+    id: string;
     profilePicture: string;
+    event?: string;
   } | null;
 
   setIsOnCall: React.Dispatch<
     React.SetStateAction<{
       username: string;
-      _id: string;
+      id: string;
       profilePicture: string;
     } | null>
   >;
@@ -74,7 +75,7 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const currentChatRef = useRef<any>(null);
   const [isOnCall, setIsOnCall] = useState<{
     username: string;
-    _id: string;
+    id: string;
     profilePicture: string;
   } | null>(null);
 
@@ -108,6 +109,10 @@ const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
+
+        if (data.event === "IncomingCall") {
+          setIsOnCall(data);
+        }
 
         if (data.event === "searchFriend" && data.searchResult) {
           setSearchResult(data.searchResult);

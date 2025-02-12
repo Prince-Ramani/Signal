@@ -276,7 +276,7 @@ const ChatBox = memo(() => {
                 className="flex items-center justify-center md:hover:bg-white/20 p-2 rounded-full cursor-pointer "
                 onClick={() => {
                   setIsOnCall({
-                    _id: currentChat.chatInfo._id,
+                    id: currentChat.chatInfo._id,
                     profilePicture: currentChat.chatInfo.profilePicture,
                     username: currentChat.chatInfo.username,
                   });
